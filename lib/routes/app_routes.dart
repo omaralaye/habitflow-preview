@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../presentation/splash_screen/splash_screen.dart';
+import '../presentation/login_screen/login_screen.dart';
+import '../presentation/signup_screen/signup_screen.dart';
 import '../presentation/navigation_container/navigation_container_screen.dart';
 import '../presentation/onboarding_flow/onboarding_flow.dart';
 import '../presentation/add_habit_screen/add_habit_screen.dart';
@@ -12,6 +14,8 @@ class AppRoutes {
   // Route constants
   static const String initial = splashScreen;
   static const String splashScreen = '/splash-screen';
+  static const String loginScreen = '/login-screen';
+  static const String signupScreen = '/signup-screen';
   static const String onboardingFlow = '/onboarding-flow';
   static const String navigationContainer = '/navigation-container';
   static const String homeTodayScreen = '/home-today-screen';
@@ -25,11 +29,13 @@ class AppRoutes {
 
   /// Routes map
   static Map<String, WidgetBuilder> get routes => {
-    splashScreen: (context) => const SplashScreen(),
-    onboardingFlow: (context) => const OnboardingFlow(),
-    navigationContainer: (context) => const NavigationContainerScreen(),
-    addHabitScreen: (context) => const AddHabitScreen(),
-    editHabitScreen: (context) => const EditHabitScreen(),
-    notificationsScreen: (context) => const NotificationsScreen(),
-  };
+        splashScreen: (context) => const SplashScreen(),
+        loginScreen: (context) => const LoginScreen(),
+        signupScreen: (context) => const SignupScreen(),
+        onboardingFlow: (context) => const OnboardingFlow(),
+        navigationContainer: (context) => const NavigationContainerScreen(),
+        addHabitScreen: (context) => const AddHabitScreen(),
+        editHabitScreen: (context) => const EditHabitScreen(),
+        notificationsScreen: (context) => const NotificationsScreen(),
+      };
 }

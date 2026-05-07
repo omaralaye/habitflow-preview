@@ -23,7 +23,19 @@ class _SplashScreenState extends State<SplashScreen>
   void initState() {
     super.initState();
     _setupBreathingAnimation();
+    _setSystemUIOverlay();
     _initializeApp();
+  }
+
+  void _setSystemUIOverlay() {
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+        systemNavigationBarColor: Color(0xFF6B4CE6), // Primary color directly
+        systemNavigationBarIconBrightness: Brightness.light,
+      ),
+    );
   }
 
   void _setupBreathingAnimation() {
@@ -47,6 +59,9 @@ class _SplashScreenState extends State<SplashScreen>
       setState(() => _statusMessage = 'Checking streaks...');
       await Future.delayed(const Duration(milliseconds: 600));
 
+      final user = Supabase.instance.client.auth.currentUser;
+      final isLoggedIn = user != null;
+
       setState(() => _statusMessage = 'Syncing progress...');
       await Future.delayed(const Duration(milliseconds: 700));
 
@@ -56,12 +71,21 @@ class _SplashScreenState extends State<SplashScreen>
       setState(() => _isInitializing = false);
 
       if (mounted) {
-        Navigator.pushReplacementNamed(
-          context,
-          _hasCompletedOnboarding
-              ? AppRoutes.navigationContainer
-              : AppRoutes.onboardingFlow,
-        );
+        // Navigate after the current frame to avoid hit-test issues
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            if (isLoggedIn) {
+              Navigator.pushReplacementNamed(
+                context,
+                _hasCompletedOnboarding
+                    ? AppRoutes.navigationContainer
+                    : AppRoutes.onboardingFlow,
+              );
+            } else {
+              Navigator.pushReplacementNamed(context, AppRoutes.loginScreen);
+            }
+          }
+        });
       }
     } catch (e) {
       _handleInitializationError();
@@ -106,15 +130,6 @@ class _SplashScreenState extends State<SplashScreen>
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final size = MediaQuery.of(context).size;
-
-    SystemChrome.setSystemUIOverlayStyle(
-      SystemUiOverlayStyle(
-        statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.light,
-        systemNavigationBarColor: theme.colorScheme.primary,
-        systemNavigationBarIconBrightness: Brightness.light,
-      ),
-    );
 
     return Scaffold(
       body: Container(

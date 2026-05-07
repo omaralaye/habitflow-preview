@@ -545,27 +545,24 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(
-          'Reset All Habits?',
-          style: GoogleFonts.dmSans(fontWeight: FontWeight.w700),
-        ),
-        content: Text(
-          'This will permanently delete all your habits and progress. This cannot be undone.',
-          style: GoogleFonts.dmSans(),
+        title: const Text('Reset All Habits'),
+        content: const Text(
+          'This will permanently delete all your habits and streaks. This action cannot be undone.',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Cancel', style: GoogleFonts.dmSans()),
+            child: const Text('Cancel'),
           ),
           TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Reset', style: GoogleFonts.dmSans(color: Colors.red)),
+            onPressed: () {
+              // TODO: Implement reset logic
+              Navigator.pop(context);
+            },
+            child: const Text('Reset', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
     );
   }
-
-  void _showSettingsMenu(BuildContext context) {}
 }

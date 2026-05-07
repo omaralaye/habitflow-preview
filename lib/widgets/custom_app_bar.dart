@@ -86,7 +86,6 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
       case CustomAppBarStyle.centered:
         return _buildCenteredAppBar(context, bgColor, fgColor);
       case CustomAppBarStyle.standard:
-      default:
         return _buildStandardAppBar(context, bgColor, fgColor);
     }
   }

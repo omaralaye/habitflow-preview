@@ -19,7 +19,6 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   String? _selectedGoal;
   String? _selectedReminderTime;
   final List<String> _selectedHabitAreas = [];
-  final int _dailyHabitCount = 3;
 
   final List<Map<String, dynamic>> _onboardingPages = [
     {

@@ -2,8 +2,6 @@ import 'package:flowfit/core/app_export.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:sizer/sizer.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:flowfit/routes/app_routes.dart';
 
 /// Home/Today Screen - Daily habit check-in dashboard
 class HomeTodayScreen extends StatefulWidget {
