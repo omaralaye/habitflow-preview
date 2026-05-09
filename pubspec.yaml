@@ -23,6 +23,7 @@ dependencies:
   connectivity_plus: ^5.0.2
   dio: ^5.4.0
   fluttertoast: ^8.2.4
+  share_plus: ^13.1.0
   fl_chart: ^0.65.0
   percent_indicator: ^4.2.5
   smooth_page_indicator: ^2.0.1
@@ -30,6 +31,8 @@ dependencies:
   flutter_slidable: ^4.0.3
   video_player: ^2.10.0
   screen_brightness: ^2.1.7
+  image_picker: ^1.0.7
+  url_launcher: ^6.2.2
 
   table_calendar: any
   universal_html: ^2.2.4

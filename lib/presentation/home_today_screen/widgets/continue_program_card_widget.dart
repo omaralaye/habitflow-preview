@@ -105,7 +105,7 @@ class ContinueProgramCardWidget extends StatelessWidget {
           // Continue button
           IconButton(
             onPressed: () {
-              HapticFeedback.lightImpact();
+              HapticUtil.lightImpact();
               onContinue();
             },
             icon: CustomIconWidget(

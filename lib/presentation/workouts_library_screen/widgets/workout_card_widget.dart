@@ -33,7 +33,7 @@ class WorkoutCardWidget extends StatelessWidget {
         children: [
           SlidableAction(
             onPressed: (context) {
-              HapticFeedback.lightImpact();
+              HapticUtil.lightImpact();
               onFavorite();
             },
             backgroundColor: theme.colorScheme.primary,
@@ -44,7 +44,7 @@ class WorkoutCardWidget extends StatelessWidget {
           ),
           SlidableAction(
             onPressed: (context) {
-              HapticFeedback.lightImpact();
+              HapticUtil.lightImpact();
               onDownload();
             },
             backgroundColor: theme.colorScheme.secondary,
@@ -55,7 +55,7 @@ class WorkoutCardWidget extends StatelessWidget {
           ),
           SlidableAction(
             onPressed: (context) {
-              HapticFeedback.lightImpact();
+              HapticUtil.lightImpact();
               onShare();
             },
             backgroundColor: theme.colorScheme.tertiary,
@@ -74,7 +74,7 @@ class WorkoutCardWidget extends StatelessWidget {
         ),
         child: InkWell(
           onTap: () {
-            HapticFeedback.lightImpact();
+            HapticUtil.lightImpact();
             onTap();
           },
           borderRadius: BorderRadius.circular(16),

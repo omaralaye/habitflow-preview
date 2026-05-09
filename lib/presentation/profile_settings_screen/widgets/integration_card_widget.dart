@@ -35,7 +35,7 @@ class IntegrationCardWidget extends StatelessWidget {
           SlidableAction(
             onPressed: (context) {
               if (onSync != null) {
-                HapticFeedback.mediumImpact();
+                HapticUtil.mediumImpact();
                 onSync!();
               }
             },

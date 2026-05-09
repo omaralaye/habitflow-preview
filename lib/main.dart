@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:sizer/sizer.dart';
 
 import '../core/app_export.dart';
+import '../core/app_settings.dart';
+import '../core/challenge_manager.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -16,12 +18,35 @@ Future<void> main() async {
     debugPrint('Supabase initialization error: $e');
   }
 
+  await AppSettings.load();
+  await ChallengeManager.load();
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   runApp(const MyApp());
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  @override
+  void initState() {
+    super.initState();
+    AppSettings.themeModeNotifier.addListener(_onThemeChanged);
+  }
+
+  @override
+  void dispose() {
+    AppSettings.themeModeNotifier.removeListener(_onThemeChanged);
+    super.dispose();
+  }
+
+  void _onThemeChanged() {
+    setState(() {});
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -31,7 +56,7 @@ class MyApp extends StatelessWidget {
           title: 'HabitFlow',
           theme: AppTheme.lightTheme,
           darkTheme: AppTheme.darkTheme,
-          themeMode: ThemeMode.light,
+          themeMode: AppSettings.themeModeNotifier.value,
           debugShowCheckedModeBanner: false,
           routes: AppRoutes.routes,
           initialRoute: AppRoutes.initial,

@@ -125,7 +125,7 @@ class NextExercisePreviewWidget extends StatelessWidget {
             width: double.infinity,
             child: ElevatedButton(
               onPressed: () {
-                HapticFeedback.mediumImpact();
+                HapticUtil.mediumImpact();
                 onSkipRest?.call();
               },
               style: ElevatedButton.styleFrom(

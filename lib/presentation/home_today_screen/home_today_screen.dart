@@ -1,11 +1,14 @@
 import 'package:flowfit/core/app_export.dart';
+import 'package:flowfit/core/challenge_manager.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:sizer/sizer.dart';
 
 /// Home/Today Screen - Daily habit check-in dashboard
 class HomeTodayScreen extends StatefulWidget {
-  const HomeTodayScreen({super.key});
+  final VoidCallback? onSeeAllHabits;
+
+  const HomeTodayScreen({super.key, this.onSeeAllHabits});
 
   @override
   State<HomeTodayScreen> createState() => _HomeTodayScreenState();
@@ -15,6 +18,22 @@ class _HomeTodayScreenState extends State<HomeTodayScreen> {
   final String _userName = 'Alex';
   final int _currentStreak = 14;
   final DateTime _today = DateTime.now();
+
+  @override
+  void initState() {
+    super.initState();
+    ChallengeManager.addListener(_onChallengesChanged);
+  }
+
+  @override
+  void dispose() {
+    ChallengeManager.removeListener(_onChallengesChanged);
+    super.dispose();
+  }
+
+  void _onChallengesChanged() {
+    if (mounted) setState(() {});
+  }
 
   final List<Map<String, dynamic>> _todayHabits = [
     {
@@ -107,7 +126,7 @@ class _HomeTodayScreenState extends State<HomeTodayScreen> {
   }
 
   void _toggleHabit(int id) {
-    HapticFeedback.mediumImpact();
+    HapticUtil.mediumImpact();
     setState(() {
       final index = _todayHabits.indexWhere((h) => h['id'] == id);
       if (index != -1) {
@@ -118,7 +137,7 @@ class _HomeTodayScreenState extends State<HomeTodayScreen> {
   }
 
   void _editHabit(Map<String, dynamic> habit) async {
-    HapticFeedback.mediumImpact();
+    HapticUtil.mediumImpact();
     final habitArgs = {
       'name': habit['title'] as String,
       'category': habit['category'] as String,
@@ -144,7 +163,7 @@ class _HomeTodayScreenState extends State<HomeTodayScreen> {
   }
 
   Future<void> _confirmDeleteHabit(Map<String, dynamic> habit) async {
-    HapticFeedback.mediumImpact();
+    HapticUtil.mediumImpact();
     final theme = Theme.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
@@ -201,7 +220,7 @@ class _HomeTodayScreenState extends State<HomeTodayScreen> {
   }
 
   void _showHabitOptions(Map<String, dynamic> habit) {
-    HapticFeedback.mediumImpact();
+    HapticUtil.mediumImpact();
     final theme = Theme.of(context);
     final color = Color(habit['color'] as int);
     showModalBottomSheet(
@@ -320,6 +339,8 @@ class _HomeTodayScreenState extends State<HomeTodayScreen> {
               children: [
                 _buildStreakAndProgress(theme),
                 _buildWeeklyOverview(theme),
+                if (AppSettings.motivationalQuotes) _buildQuoteCard(theme),
+                _buildActiveChallengeCard(theme),
                 _buildTodayHabitsSection(theme),
                 SizedBox(height: 10.h),
               ],
@@ -464,51 +485,54 @@ class _HomeTodayScreenState extends State<HomeTodayScreen> {
   }
 
   Widget _buildStreakAndProgress(ThemeData theme) {
+    final showStreak = AppSettings.showStreak;
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
       child: Row(
         children: [
-          Expanded(
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    const Color(0xFFFF6B35),
-                    const Color(0xFFFF6B35).withValues(alpha: 0.8),
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Row(
-                children: [
-                  const Text('🔥', style: TextStyle(fontSize: 32)),
-                  const SizedBox(width: 12),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '$_currentStreak days',
-                        style: GoogleFonts.dmSans(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.white,
-                        ),
-                      ),
-                      Text(
-                        'Current Streak',
-                        style: GoogleFonts.dmSans(
-                          fontSize: 12,
-                          color: Colors.white.withValues(alpha: 0.85),
-                        ),
-                      ),
+          if (showStreak) ...[
+            Expanded(
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      const Color(0xFFFF6B35),
+                      const Color(0xFFFF6B35).withValues(alpha: 0.8),
                     ],
                   ),
-                ],
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  children: [
+                    const Text('🔥', style: TextStyle(fontSize: 32)),
+                    const SizedBox(width: 12),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '$_currentStreak days',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                          ),
+                        ),
+                        Text(
+                          'Current Streak',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 12,
+                            color: Colors.white.withValues(alpha: 0.85),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-          const SizedBox(width: 12),
+            const SizedBox(width: 12),
+          ],
           Expanded(
             child: Container(
               padding: const EdgeInsets.all(16),
@@ -673,6 +697,152 @@ class _HomeTodayScreenState extends State<HomeTodayScreen> {
     );
   }
 
+  Widget _buildQuoteCard(ThemeData theme) {
+    final quote = motivationalQuotesList[_today.day % motivationalQuotesList.length];
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              theme.colorScheme.primary.withValues(alpha: 0.1),
+              theme.colorScheme.primary.withValues(alpha: 0.05),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: theme.colorScheme.primary.withValues(alpha: 0.15),
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.format_quote_rounded,
+                color: theme.colorScheme.primary, size: 40),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                '"$quote"',
+                style: GoogleFonts.dmSans(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  fontStyle: FontStyle.italic,
+                  color: theme.colorScheme.onSurface,
+                  height: 1.4,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActiveChallengeCard(ThemeData theme) {
+    final activeList = ChallengeManager.activeChallenges;
+    if (activeList.isEmpty) return const SizedBox.shrink();
+    final challenge = activeList.first;
+    final color = Color(challenge['color'] as int);
+    final currentDay = challenge['currentDay'] as int;
+    final totalDays = challenge['totalDays'] as int;
+    final progress = totalDays > 0 ? currentDay / totalDays : 0.0;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
+      child: InkWell(
+        onTap: () => Navigator.pushNamed(context, '/challenges-screen'),
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                color.withValues(alpha: 0.12),
+                color.withValues(alpha: 0.04),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: color.withValues(alpha: 0.2)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  IconData(challenge['icon'] as int,
+                      fontFamily: 'MaterialIcons'),
+                  color: color,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      challenge['title'] as String,
+                      style: GoogleFonts.dmSans(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: theme.colorScheme.onSurface,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Text(
+                          'Day $currentDay of $totalDays',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 12,
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                        const Spacer(),
+                        Text(
+                          '${(progress * 100).toInt()}%',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: color,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: progress.clamp(0.0, 1.0),
+                        backgroundColor: color.withValues(alpha: 0.15),
+                        valueColor: AlwaysStoppedAnimation<Color>(color),
+                        minHeight: 5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Icon(Icons.chevron_right_rounded,
+                  color: theme.colorScheme.onSurfaceVariant, size: 20),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildTodayHabitsSection(ThemeData theme) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
@@ -691,7 +861,7 @@ class _HomeTodayScreenState extends State<HomeTodayScreen> {
                 ),
               ),
               TextButton(
-                onPressed: () {},
+                onPressed: widget.onSeeAllHabits,
                 child: Text(
                   'See all',
                   style: GoogleFonts.dmSans(
@@ -718,7 +888,7 @@ class _HomeTodayScreenState extends State<HomeTodayScreen> {
       key: ValueKey(habit['id']),
       direction: DismissDirection.endToStart,
       confirmDismiss: (_) async {
-        HapticFeedback.mediumImpact();
+        HapticUtil.mediumImpact();
         final confirmed = await showDialog<bool>(
           context: context,
           builder: (ctx) => AlertDialog(

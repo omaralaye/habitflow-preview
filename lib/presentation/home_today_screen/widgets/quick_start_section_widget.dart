@@ -54,7 +54,7 @@ class QuickStartSectionWidget extends StatelessWidget {
   ) {
     return GestureDetector(
       onTap: () {
-        HapticFeedback.lightImpact();
+        HapticUtil.lightImpact();
         onWorkoutTap(workout);
       },
       child: Container(

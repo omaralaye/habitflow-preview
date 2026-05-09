@@ -5,8 +5,9 @@ import '../../../core/app_export.dart';
 
 class ProfileHeaderWidget extends StatelessWidget {
   final Map<String, dynamic> userData;
+  final VoidCallback? onEditPhoto;
 
-  const ProfileHeaderWidget({super.key, required this.userData});
+  const ProfileHeaderWidget({super.key, required this.userData, this.onEditPhoto});
 
   @override
   Widget build(BuildContext context) {
@@ -41,13 +42,7 @@ class ProfileHeaderWidget extends StatelessWidget {
                   ),
                 ),
                 child: ClipOval(
-                  child: CustomImageWidget(
-                    imageUrl: userData["avatar"] as String,
-                    width: 100,
-                    height: 100,
-                    fit: BoxFit.cover,
-                    semanticLabel: userData["semanticLabel"] as String,
-                  ),
+                  child: _buildAvatarContent(theme),
                 ),
               ),
               Positioned(
@@ -55,10 +50,8 @@ class ProfileHeaderWidget extends StatelessWidget {
                 right: 0,
                 child: GestureDetector(
                   onTap: () {
-                    HapticFeedback.lightImpact();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Edit profile photo")),
-                    );
+                    HapticUtil.lightImpact();
+                    onEditPhoto?.call();
                   },
                   child: Container(
                     padding: const EdgeInsets.all(8),
@@ -145,6 +138,30 @@ class ProfileHeaderWidget extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildAvatarContent(ThemeData theme) {
+    final avatarType = userData['avatarType'] as String? ?? 'url';
+    if (avatarType == 'emoji') {
+      return Container(
+        width: 100,
+        height: 100,
+        color: theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
+        child: Center(
+          child: Text(
+            userData['avatar'] as String? ?? '😀',
+            style: const TextStyle(fontSize: 44),
+          ),
+        ),
+      );
+    }
+    return CustomImageWidget(
+      imageUrl: userData["avatar"] as String,
+      width: 100,
+      height: 100,
+      fit: BoxFit.cover,
+      semanticLabel: userData["semanticLabel"] as String? ?? 'Profile photo',
     );
   }
 

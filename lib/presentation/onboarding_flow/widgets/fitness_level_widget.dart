@@ -80,7 +80,7 @@ class FitnessLevelWidget extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: () {
-          HapticFeedback.selectionClick();
+          HapticUtil.selectionClick();
           onLevelSelected(levelKey);
         },
         borderRadius: BorderRadius.circular(16),

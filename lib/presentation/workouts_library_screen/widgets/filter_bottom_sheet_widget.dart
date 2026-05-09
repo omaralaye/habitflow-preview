@@ -183,7 +183,7 @@ class _FilterBottomSheetWidgetState extends State<FilterBottomSheetWidget> {
                 height: 6.h,
                 child: ElevatedButton(
                   onPressed: () {
-                    HapticFeedback.mediumImpact();
+                    HapticUtil.mediumImpact();
                     widget.onApplyFilters(_filters);
                     Navigator.pop(context);
                   },
@@ -250,7 +250,7 @@ class _FilterBottomSheetWidgetState extends State<FilterBottomSheetWidget> {
                     }
                     _filters[filterKey] = selectedOptions;
                   });
-                  HapticFeedback.lightImpact();
+                  HapticUtil.lightImpact();
                 },
                 labelStyle: theme.textTheme.labelMedium?.copyWith(
                   color: isSelected

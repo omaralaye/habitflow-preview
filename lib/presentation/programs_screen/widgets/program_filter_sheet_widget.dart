@@ -113,7 +113,7 @@ class _ProgramFilterSheetWidgetState extends State<ProgramFilterSheetWidget> {
                       color: Colors.transparent,
                       child: InkWell(
                         onTap: () {
-                          HapticFeedback.lightImpact();
+                          HapticUtil.lightImpact();
                           setState(() =>
                               _selectedFilter = option["value"] as String);
                           widget.onFilterSelected(option["value"] as String);

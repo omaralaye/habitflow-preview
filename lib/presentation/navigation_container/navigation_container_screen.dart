@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../core/app_settings.dart';
 
 import '../../widgets/custom_bottom_bar.dart';
 import '../home_today_screen/home_today_screen.dart';
@@ -20,18 +21,18 @@ class NavigationContainerScreen extends StatefulWidget {
 class _NavigationContainerScreenState extends State<NavigationContainerScreen> {
   String _currentRoute = '/home-today-screen';
 
-  final Map<String, Widget> _screens = const {
-    '/home-today-screen': HomeTodayScreen(),
-    '/habits-library-screen': WorkoutsLibraryScreen(),
-    '/challenges-screen': ProgramsScreen(),
-    '/progress-tracking-screen': ProgressTrackingScreen(),
-    '/profile-settings-screen': ProfileSettingsScreen(),
+  late final Map<String, Widget> _screens = {
+    '/home-today-screen': HomeTodayScreen(onSeeAllHabits: () => _onNavigate('/habits-library-screen')),
+    '/habits-library-screen': const WorkoutsLibraryScreen(),
+    '/challenges-screen': const ProgramsScreen(),
+    '/progress-tracking-screen': const ProgressTrackingScreen(),
+    '/profile-settings-screen': const ProfileSettingsScreen(),
   };
 
   void _onNavigate(String route) {
     if (_currentRoute == route) return;
 
-    HapticFeedback.lightImpact();
+    HapticUtil.lightImpact();
     setState(() {
       _currentRoute = route;
     });

@@ -8,11 +8,13 @@ import '../../../widgets/custom_icon_widget.dart';
 class GreetingHeaderWidget extends StatelessWidget {
   final String userName;
   final int currentStreak;
+  final bool showStreak;
 
   const GreetingHeaderWidget({
     super.key,
     required this.userName,
     required this.currentStreak,
+    this.showStreak = true,
   });
 
   @override
@@ -42,24 +44,26 @@ class GreetingHeaderWidget extends StatelessWidget {
               color: theme.colorScheme.onSurface,
             ),
           ),
-          SizedBox(height: 0.5.h),
-          Row(
-            children: [
-              CustomIconWidget(
-                iconName: 'local_fire_department',
-                color: theme.colorScheme.primary,
-                size: 20,
-              ),
-              SizedBox(width: 1.w),
-              Text(
-                'Day $currentStreak strong! ✨',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w500,
+          if (showStreak) ...[
+            SizedBox(height: 0.5.h),
+            Row(
+              children: [
+                CustomIconWidget(
+                  iconName: 'local_fire_department',
+                  color: theme.colorScheme.primary,
+                  size: 20,
                 ),
-              ),
-            ],
-          ),
+                SizedBox(width: 1.w),
+                Text(
+                  'Day $currentStreak strong! ✨',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );

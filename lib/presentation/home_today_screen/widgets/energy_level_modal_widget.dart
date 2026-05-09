@@ -101,7 +101,7 @@ class _EnergyLevelModalWidgetState extends State<EnergyLevelModalWidget> {
             child: ElevatedButton(
               onPressed: selectedEnergy != null
                   ? () {
-                      HapticFeedback.mediumImpact();
+                      HapticUtil.mediumImpact();
                       widget.onEnergySelected(selectedEnergy!);
                       Navigator.pop(context);
                     }
@@ -134,7 +134,7 @@ class _EnergyLevelModalWidgetState extends State<EnergyLevelModalWidget> {
 
     return GestureDetector(
       onTap: () {
-        HapticFeedback.lightImpact();
+        HapticUtil.lightImpact();
         setState(() {
           selectedEnergy = energy['level'] as String;
         });

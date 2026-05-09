@@ -135,7 +135,7 @@ class DailyRecommendationCardWidget extends StatelessWidget {
                   height: 6.h,
                   child: ElevatedButton(
                     onPressed: () {
-                      HapticFeedback.mediumImpact();
+                      HapticUtil.mediumImpact();
                       onStartWorkout();
                     },
                     style: ElevatedButton.styleFrom(

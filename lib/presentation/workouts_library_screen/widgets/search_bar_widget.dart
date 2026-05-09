@@ -45,7 +45,7 @@ class _SearchBarWidgetState extends State<SearchBarWidget> {
       bool available = await _speech.initialize();
       if (available) {
         setState(() => _isListening = true);
-        HapticFeedback.mediumImpact();
+        HapticUtil.mediumImpact();
         _speech.listen(
           onResult: (result) {
             setState(() {
@@ -173,7 +173,7 @@ class _SearchBarWidgetState extends State<SearchBarWidget> {
                     size: 20,
                   ),
                   onPressed: () {
-                    HapticFeedback.lightImpact();
+                    HapticUtil.lightImpact();
                     widget.onFilterTap();
                   },
                 ),

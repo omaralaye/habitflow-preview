@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../core/app_settings.dart';
 
 /// App bar style variants
 enum CustomAppBarStyle {
@@ -221,7 +222,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
       color: color,
       iconSize: 24,
       onPressed: () {
-        HapticFeedback.lightImpact();
+        HapticUtil.lightImpact();
         Navigator.of(context).pop();
       },
     );
@@ -244,7 +245,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
         color: color,
         iconSize: 24,
         onPressed: () {
-          HapticFeedback.lightImpact();
+          HapticUtil.lightImpact();
           Navigator.of(context).pop();
         },
       ),
@@ -261,7 +262,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
           color: color,
           iconSize: 24,
           onPressed: () {
-            HapticFeedback.lightImpact();
+            HapticUtil.lightImpact();
             if (action.onPressed != null) action.onPressed!();
           },
         );
@@ -286,7 +287,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
             color: color,
             iconSize: 24,
             onPressed: () {
-              HapticFeedback.lightImpact();
+              HapticUtil.lightImpact();
               if (action.onPressed != null) action.onPressed!();
             },
           ),
@@ -314,7 +315,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
             color: color,
             iconSize: 22,
             onPressed: () {
-              HapticFeedback.lightImpact();
+              HapticUtil.lightImpact();
               if (action.onPressed != null) action.onPressed!();
             },
           ),
@@ -402,7 +403,7 @@ class CustomWorkoutAppBar extends StatelessWidget
                 icon: const Icon(Icons.close_rounded),
                 iconSize: 24,
                 onPressed: () {
-                  HapticFeedback.lightImpact();
+                  HapticUtil.lightImpact();
                   if (onStop != null) {
                     onStop!();
                   } else {
@@ -473,7 +474,7 @@ class CustomWorkoutAppBar extends StatelessWidget
                   ),
                   iconSize: 24,
                   onPressed: () {
-                    HapticFeedback.mediumImpact();
+                    HapticUtil.mediumImpact();
                     onPauseResume!();
                   },
                 ),

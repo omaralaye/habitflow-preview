@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../../core/app_settings.dart';
 import 'package:sizer/sizer.dart';
 
 
@@ -36,7 +37,7 @@ class CategoryChipsWidget extends StatelessWidget {
             label: Text(category),
             selected: isSelected,
             onSelected: (selected) {
-              HapticFeedback.lightImpact();
+              HapticUtil.lightImpact();
               onCategorySelected(category);
             },
             labelStyle: theme.textTheme.labelMedium?.copyWith(

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../core/app_settings.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -127,7 +128,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   }
 
   void _handleContinue() {
-    HapticFeedback.lightImpact();
+    HapticUtil.lightImpact();
     if (_currentPage < 5) {
       _pageController.nextPage(
         duration: const Duration(milliseconds: 300),
@@ -147,7 +148,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   }
 
   void _handleSkip() async {
-    HapticFeedback.lightImpact();
+    HapticUtil.lightImpact();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('hasCompletedOnboarding', true);
     if (mounted) {
@@ -330,7 +331,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
               final isSelected = _selectedGoal == option['id'];
               return GestureDetector(
                 onTap: () {
-                  HapticFeedback.lightImpact();
+                  HapticUtil.lightImpact();
                   setState(() => _selectedGoal = option['id'] as String);
                 },
                 child: AnimatedContainer(
@@ -413,7 +414,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
               final isSelected = _selectedHabitAreas.contains(area['id']);
               return GestureDetector(
                 onTap: () {
-                  HapticFeedback.lightImpact();
+                  HapticUtil.lightImpact();
                   setState(() {
                     if (isSelected) {
                       _selectedHabitAreas.remove(area['id']);
@@ -503,7 +504,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
               final isSelected = _selectedReminderTime == time;
               return GestureDetector(
                 onTap: () {
-                  HapticFeedback.lightImpact();
+                  HapticUtil.lightImpact();
                   setState(() => _selectedReminderTime = time);
                 },
                 child: AnimatedContainer(
@@ -564,7 +565,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
           Center(
             child: TextButton(
               onPressed: () {
-                HapticFeedback.lightImpact();
+                HapticUtil.lightImpact();
                 setState(() => _selectedReminderTime = null);
               },
               child: Text(

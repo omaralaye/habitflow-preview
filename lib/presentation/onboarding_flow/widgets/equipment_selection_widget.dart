@@ -54,7 +54,7 @@ class EquipmentSelectionWidget extends StatelessWidget {
   ];
 
   void _toggleEquipment(String key) {
-    HapticFeedback.selectionClick();
+    HapticUtil.selectionClick();
 
     final newSelection = List<String>.from(selectedEquipment);
 

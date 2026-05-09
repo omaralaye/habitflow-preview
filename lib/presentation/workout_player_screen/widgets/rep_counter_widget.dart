@@ -67,7 +67,7 @@ class RepCounterWidget extends StatelessWidget {
               IconButton(
                 onPressed: currentReps > 0
                     ? () {
-                        HapticFeedback.lightImpact();
+                        HapticUtil.lightImpact();
                         onRepDecrement?.call();
                       }
                     : null,
@@ -108,7 +108,7 @@ class RepCounterWidget extends StatelessWidget {
               // Increment button
               IconButton(
                 onPressed: () {
-                  HapticFeedback.mediumImpact();
+                  HapticUtil.mediumImpact();
                   onRepIncrement?.call();
                 },
                 icon: CustomIconWidget(

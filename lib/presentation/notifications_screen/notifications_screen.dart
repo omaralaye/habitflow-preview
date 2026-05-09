@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../core/app_settings.dart';
 import 'package:sizer/sizer.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -170,7 +171,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 label: Text(filter),
                 selected: isSelected,
                 onSelected: (selected) {
-                  HapticFeedback.lightImpact();
+                  HapticUtil.lightImpact();
                   setState(() => _selectedFilter = filter);
                 },
                 backgroundColor: theme.colorScheme.surface,
@@ -333,7 +334,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   void _markAsRead(String id) {
-    HapticFeedback.lightImpact();
+    HapticUtil.lightImpact();
     setState(() {
       final index = _notifications.indexWhere((n) => n['id'] == id);
       if (index != -1) {
@@ -343,7 +344,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   void _markAllAsRead() {
-    HapticFeedback.mediumImpact();
+    HapticUtil.mediumImpact();
     setState(() {
       for (var notification in _notifications) {
         notification['isRead'] = true;

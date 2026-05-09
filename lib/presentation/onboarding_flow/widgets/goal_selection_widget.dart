@@ -92,7 +92,7 @@ class GoalSelectionWidget extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: () {
-          HapticFeedback.selectionClick();
+          HapticUtil.selectionClick();
           onGoalSelected(goalKey);
         },
         borderRadius: BorderRadius.circular(16),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../core/app_settings.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 /// Habits Library Screen - Browse and manage all habits
@@ -16,6 +17,8 @@ class _WorkoutsLibraryScreenState extends State<WorkoutsLibraryScreen>
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   String _selectedCategory = 'All';
+  String _filterDifficulty = 'All';
+  String _sortBy = 'Popularity';
 
   final List<String> _categories = [
     'All',
@@ -204,7 +207,9 @@ class _WorkoutsLibraryScreenState extends State<WorkoutsLibraryScreen>
           );
       final matchesCategory =
           _selectedCategory == 'All' || habit['category'] == _selectedCategory;
-      return matchesSearch && matchesCategory;
+      final matchesDifficulty =
+          _filterDifficulty == 'All' || habit['difficulty'] == _filterDifficulty;
+      return matchesSearch && matchesCategory && matchesDifficulty;
     }).toList();
   }
 
@@ -224,8 +229,101 @@ class _WorkoutsLibraryScreenState extends State<WorkoutsLibraryScreen>
     super.dispose();
   }
 
+  void _showFilterSheet(ThemeData theme) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: theme.colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setSheetState) {
+            return SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Text('Filter Habits',
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Text('Difficulty',
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      children: ['All', 'Easy', 'Medium', 'Hard'].map((d) {
+                        final selected = _filterDifficulty == d;
+                        return ChoiceChip(
+                          label: Text(d),
+                          selected: selected,
+                          onSelected: (_) {
+                            setSheetState(() => _filterDifficulty = d);
+                            setState(() => _filterDifficulty = d);
+                          },
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 20),
+                    Text('Sort by',
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      children: ['Popularity', 'Duration', 'A-Z'].map((s) {
+                        final selected = _sortBy == s;
+                        return ChoiceChip(
+                          label: Text(s),
+                          selected: selected,
+                          onSelected: (_) {
+                            setSheetState(() => _sortBy = s);
+                            setState(() => _sortBy = s);
+                          },
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        child: const Text('Apply'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   void _toggleHabit(int id) {
-    HapticFeedback.lightImpact();
+    HapticUtil.lightImpact();
     setState(() {
       final index = _allHabits.indexWhere((h) => h['id'] == id);
       if (index != -1) {
@@ -254,7 +352,7 @@ class _WorkoutsLibraryScreenState extends State<WorkoutsLibraryScreen>
         actions: [
           IconButton(
             icon: Icon(Icons.tune_rounded, color: theme.colorScheme.onSurface),
-            onPressed: () {},
+            onPressed: () => _showFilterSheet(theme),
           ),
         ],
         bottom: TabBar(
@@ -380,7 +478,7 @@ class _WorkoutsLibraryScreenState extends State<WorkoutsLibraryScreen>
               final isSelected = _selectedCategory == cat;
               return GestureDetector(
                 onTap: () {
-                  HapticFeedback.lightImpact();
+                  HapticUtil.lightImpact();
                   setState(() => _selectedCategory = cat);
                 },
                 child: AnimatedContainer(

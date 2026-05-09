@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../core/app_settings.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:sizer/sizer.dart';
 
@@ -144,7 +145,7 @@ class _EditHabitScreenState extends State<EditHabitScreen> {
 
   void _saveHabit() {
     if (!_formKey.currentState!.validate()) return;
-    HapticFeedback.mediumImpact();
+    HapticUtil.mediumImpact();
 
     final updatedHabit = {
       'name': _nameController.text.trim(),
@@ -359,7 +360,7 @@ class _EditHabitScreenState extends State<EditHabitScreen> {
 
         return GestureDetector(
           onTap: () {
-            HapticFeedback.selectionClick();
+            HapticUtil.selectionClick();
             setState(() => _selectedCategory = cat['label'] as String);
           },
           child: AnimatedContainer(
@@ -423,7 +424,7 @@ class _EditHabitScreenState extends State<EditHabitScreen> {
         final isSelected = _selectedFrequency == freq['label'];
         return GestureDetector(
           onTap: () {
-            HapticFeedback.selectionClick();
+            HapticUtil.selectionClick();
             setState(() => _selectedFrequency = freq['label'] as String);
           },
           child: AnimatedContainer(
@@ -556,7 +557,7 @@ class _EditHabitScreenState extends State<EditHabitScreen> {
                 Switch(
                   value: _reminderEnabled,
                   onChanged: (val) {
-                    HapticFeedback.selectionClick();
+                    HapticUtil.selectionClick();
                     setState(() => _reminderEnabled = val);
                   },
                   activeThumbColor: theme.colorScheme.primary,

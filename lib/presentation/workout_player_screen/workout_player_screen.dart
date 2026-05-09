@@ -181,7 +181,7 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
       });
       _exerciseTimer?.cancel();
       _startRestTimer();
-      HapticFeedback.heavyImpact();
+      HapticUtil.heavyImpact();
     }
   }
 
@@ -194,7 +194,7 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
         _isResting = false;
       });
       _startExerciseTimer();
-      HapticFeedback.heavyImpact();
+      HapticUtil.heavyImpact();
     } else {
       _completeWorkout();
     }
@@ -210,20 +210,20 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
       });
       _restTimer?.cancel();
       _startExerciseTimer();
-      HapticFeedback.lightImpact();
+      HapticUtil.lightImpact();
     }
   }
 
   void _skipRest() {
     _completeRest();
-    HapticFeedback.mediumImpact();
+    HapticUtil.mediumImpact();
   }
 
   void _togglePause() {
     setState(() {
       _isPaused = !_isPaused;
     });
-    HapticFeedback.mediumImpact();
+    HapticUtil.mediumImpact();
   }
 
   void _completeWorkout() {

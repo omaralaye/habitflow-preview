@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/app_export.dart';
 
@@ -17,13 +18,14 @@ class _SplashScreenState extends State<SplashScreen>
   late Animation<double> _breathingAnimation;
   bool _isInitializing = true;
   String _statusMessage = 'Initializing...';
-  final bool _hasCompletedOnboarding = false;
+  bool _hasCompletedOnboarding = false;
 
   @override
   void initState() {
     super.initState();
     _setupBreathingAnimation();
     _setSystemUIOverlay();
+    _loadOnboardingStatus();
     _initializeApp();
   }
 
@@ -49,6 +51,12 @@ class _SplashScreenState extends State<SplashScreen>
     );
 
     _breathingController.repeat(reverse: true);
+  }
+
+  Future<void> _loadOnboardingStatus() async {
+    final prefs = await SharedPreferences.getInstance();
+    _hasCompletedOnboarding =
+        prefs.getBool('hasCompletedOnboarding') ?? false;
   }
 
   Future<void> _initializeApp() async {

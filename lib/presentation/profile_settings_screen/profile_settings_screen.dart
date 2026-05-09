@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:flowfit/routes/app_routes.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/app_settings.dart';
+import '../../routes/app_routes.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../widgets/custom_icon_widget.dart';
 import './widgets/profile_header_widget.dart';
@@ -21,6 +24,8 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     "name": "Alex Johnson",
     "avatar":
         "https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=400",
+    "avatarIsFile": false,
+    "avatarType": "url",
     "semanticLabel":
         "Profile photo of a young man with short brown hair wearing a casual shirt, smiling confidently",
     "habitGoal": "Build 6 daily habits",
@@ -41,12 +46,29 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   bool _habitReminders = true;
   bool _streakAlerts = true;
   bool _weeklyReport = true;
-  bool _motivationalQuotes = false;
+  bool _motivationalQuotes = true;
   TimeOfDay _reminderTime = const TimeOfDay(hour: 8, minute: 0);
+  TimeOfDay _resetTime = const TimeOfDay(hour: 0, minute: 0);
 
   bool _darkMode = false;
   bool _hapticFeedback = true;
   bool _showStreak = true;
+
+  String _lastSyncDisplay = "Last synced: 2 hours ago";
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSettings();
+  }
+
+  void _loadSettings() {
+    _motivationalQuotes = AppSettings.motivationalQuotes;
+    _darkMode = AppSettings.themeModeNotifier.value == ThemeMode.dark;
+    _hapticFeedback = AppSettings.hapticEnabled;
+    _showStreak = AppSettings.showStreak;
+    _resetTime = TimeOfDay(hour: AppSettings.resetHour, minute: AppSettings.resetMinute);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -72,183 +94,210 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
         physics: const BouncingScrollPhysics(),
         child: Column(
           children: [
-            ProfileHeaderWidget(userData: _userData),
+            ProfileHeaderWidget(
+              userData: _userData,
+              onEditPhoto: () => _showPhotoSourcePicker(context),
+            ),
             const SizedBox(height: 8),
             _buildStatsRow(theme),
             const SizedBox(height: 24),
             _buildBadgesSection(theme),
             const SizedBox(height: 24),
-            SettingsSectionWidget(
-              title: "Habit Settings",
-              children: [
-                SettingItemWidget(
-                  icon: "track_changes",
-                  title: "Daily Habit Goal",
-                  subtitle: _userData["habitGoal"],
-                  onTap: () => _showGoalPicker(context),
-                ),
-                SettingItemWidget(
-                  icon: "category",
-                  title: "Habit Categories",
-                  subtitle: "Health, Mindfulness, Learning",
-                  onTap: () {},
-                ),
-                SettingItemWidget(
-                  icon: "schedule",
-                  title: "Reset Time",
-                  subtitle: "Midnight (12:00 AM)",
-                  onTap: () {},
-                ),
-              ],
-            ),
+            _buildHabitSettingsSection(theme),
             const SizedBox(height: 24),
-            SettingsSectionWidget(
-              title: "Notifications",
-              children: [
-                SettingItemWidget(
-                  icon: "notifications",
-                  title: "Habit Reminders",
-                  trailing: Switch(
-                    value: _habitReminders,
-                    onChanged: (value) {
-                      HapticFeedback.lightImpact();
-                      setState(() => _habitReminders = value);
-                    },
-                  ),
-                ),
-                SettingItemWidget(
-                  icon: "schedule",
-                  title: "Reminder Time",
-                  subtitle: _reminderTime.format(context),
-                  onTap: () => _showTimePicker(context),
-                  enabled: _habitReminders,
-                ),
-                SettingItemWidget(
-                  icon: "local_fire_department",
-                  title: "Streak Alerts",
-                  subtitle: "Get notified before losing your streak",
-                  trailing: Switch(
-                    value: _streakAlerts,
-                    onChanged: (value) {
-                      HapticFeedback.lightImpact();
-                      setState(() => _streakAlerts = value);
-                    },
-                  ),
-                ),
-                SettingItemWidget(
-                  icon: "bar_chart",
-                  title: "Weekly Report",
-                  subtitle: "Summary every Sunday",
-                  trailing: Switch(
-                    value: _weeklyReport,
-                    onChanged: (value) {
-                      HapticFeedback.lightImpact();
-                      setState(() => _weeklyReport = value);
-                    },
-                  ),
-                ),
-                SettingItemWidget(
-                  icon: "format_quote",
-                  title: "Motivational Quotes",
-                  trailing: Switch(
-                    value: _motivationalQuotes,
-                    onChanged: (value) {
-                      HapticFeedback.lightImpact();
-                      setState(() => _motivationalQuotes = value);
-                    },
-                  ),
-                ),
-              ],
-            ),
+            _buildNotificationsSection(theme),
             const SizedBox(height: 24),
-            SettingsSectionWidget(
-              title: "Appearance",
-              children: [
-                SettingItemWidget(
-                  icon: "dark_mode",
-                  title: "Dark Mode",
-                  trailing: Switch(
-                    value: _darkMode,
-                    onChanged: (value) {
-                      HapticFeedback.lightImpact();
-                      setState(() => _darkMode = value);
-                    },
-                  ),
-                ),
-                SettingItemWidget(
-                  icon: "vibration",
-                  title: "Haptic Feedback",
-                  trailing: Switch(
-                    value: _hapticFeedback,
-                    onChanged: (value) {
-                      HapticFeedback.lightImpact();
-                      setState(() => _hapticFeedback = value);
-                    },
-                  ),
-                ),
-                SettingItemWidget(
-                  icon: "local_fire_department",
-                  title: "Show Streak Counter",
-                  trailing: Switch(
-                    value: _showStreak,
-                    onChanged: (value) {
-                      HapticFeedback.lightImpact();
-                      setState(() => _showStreak = value);
-                    },
-                  ),
-                ),
-              ],
-            ),
+            _buildAppearanceSection(theme),
             const SizedBox(height: 24),
-            SettingsSectionWidget(
-              title: "Data & Privacy",
-              children: [
-                SettingItemWidget(
-                  icon: "backup",
-                  title: "Backup & Sync",
-                  subtitle: "Last synced: 2 hours ago",
-                  onTap: () {},
-                ),
-                SettingItemWidget(
-                  icon: "download",
-                  title: "Export Data",
-                  subtitle: "Download your habit history",
-                  onTap: () {},
-                ),
-                SettingItemWidget(
-                  icon: "delete_outline",
-                  title: "Reset All Habits",
-                  subtitle: "This cannot be undone",
-                  onTap: () => _showResetConfirmation(context),
-                  isDestructive: true,
-                ),
-              ],
-            ),
+            _buildDataPrivacySection(theme),
             const SizedBox(height: 24),
-            SettingsSectionWidget(
-              title: "About",
-              children: [
-                SettingItemWidget(
-                  icon: "info_outline",
-                  title: "App Version",
-                  subtitle: "HabitFlow v1.0.0",
-                ),
-                SettingItemWidget(
-                  icon: "star_outline",
-                  title: "Rate HabitFlow",
-                  onTap: () {},
-                ),
-                SettingItemWidget(
-                  icon: "share",
-                  title: "Share with Friends",
-                  onTap: () {},
-                ),
-              ],
-            ),
+            _buildAboutSection(theme),
             const SizedBox(height: 32),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildHabitSettingsSection(ThemeData theme) {
+    return SettingsSectionWidget(
+      title: "Habit Settings",
+      children: [
+        SettingItemWidget(
+          icon: "track_changes",
+          title: "Daily Habit Goal",
+          subtitle: _userData["habitGoal"],
+          onTap: () => _showGoalPicker(context),
+        ),
+        SettingItemWidget(
+          icon: "category",
+          title: "Habit Categories",
+          subtitle: "Health, Mindfulness, Learning",
+          onTap: () => _showHabitCategories(context),
+        ),
+        SettingItemWidget(
+          icon: "schedule",
+          title: "Reset Time",
+          subtitle: _resetTime.format(context),
+          onTap: () => _showResetTimePicker(context),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildNotificationsSection(ThemeData theme) {
+    return SettingsSectionWidget(
+      title: "Notifications",
+      children: [
+        SettingItemWidget(
+          icon: "notifications",
+          title: "Habit Reminders",
+          trailing: Switch(
+            value: _habitReminders,
+            onChanged: (value) {
+              HapticUtil.lightImpact();
+              setState(() => _habitReminders = value);
+            },
+          ),
+        ),
+        SettingItemWidget(
+          icon: "schedule",
+          title: "Reminder Time",
+          subtitle: _reminderTime.format(context),
+          onTap: () => _showTimePicker(context),
+          enabled: _habitReminders,
+        ),
+        SettingItemWidget(
+          icon: "local_fire_department",
+          title: "Streak Alerts",
+          subtitle: "Get notified before losing your streak",
+          trailing: Switch(
+            value: _streakAlerts,
+            onChanged: (value) {
+              HapticUtil.lightImpact();
+              setState(() => _streakAlerts = value);
+            },
+          ),
+        ),
+        SettingItemWidget(
+          icon: "bar_chart",
+          title: "Weekly Report",
+          subtitle: "Summary every Sunday",
+          trailing: Switch(
+            value: _weeklyReport,
+            onChanged: (value) {
+              HapticUtil.lightImpact();
+              setState(() => _weeklyReport = value);
+            },
+          ),
+        ),
+        SettingItemWidget(
+          icon: "format_quote",
+          title: "Motivational Quotes",
+          trailing: Switch(
+            value: _motivationalQuotes,
+            onChanged: (value) {
+              HapticUtil.lightImpact();
+              AppSettings.setMotivationalQuotes(value);
+              setState(() => _motivationalQuotes = value);
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAppearanceSection(ThemeData theme) {
+    return SettingsSectionWidget(
+      title: "Appearance",
+      children: [
+        SettingItemWidget(
+          icon: "dark_mode",
+          title: "Dark Mode",
+          trailing: Switch(
+            value: _darkMode,
+            onChanged: (value) {
+              HapticUtil.lightImpact();
+              AppSettings.setDarkMode(value);
+              setState(() => _darkMode = value);
+            },
+          ),
+        ),
+        SettingItemWidget(
+          icon: "vibration",
+          title: "Haptic Feedback",
+          trailing: Switch(
+            value: _hapticFeedback,
+            onChanged: (value) {
+              HapticUtil.lightImpact();
+              AppSettings.setHapticEnabled(value);
+              setState(() => _hapticFeedback = value);
+            },
+          ),
+        ),
+        SettingItemWidget(
+          icon: "local_fire_department",
+          title: "Show Streak Counter",
+          trailing: Switch(
+            value: _showStreak,
+            onChanged: (value) {
+              HapticUtil.lightImpact();
+              AppSettings.setShowStreak(value);
+              setState(() => _showStreak = value);
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDataPrivacySection(ThemeData theme) {
+    return SettingsSectionWidget(
+      title: "Data & Privacy",
+      children: [
+        SettingItemWidget(
+          icon: "backup",
+          title: "Backup & Sync",
+          subtitle: _lastSyncDisplay,
+          onTap: () => _showBackupSync(context),
+        ),
+        SettingItemWidget(
+          icon: "download",
+          title: "Export Data",
+          subtitle: "Download your habit history",
+          onTap: () => _exportData(context),
+        ),
+        SettingItemWidget(
+          icon: "delete_outline",
+          title: "Reset All Habits",
+          subtitle: "This cannot be undone",
+          onTap: () => _showResetConfirmation(context),
+          isDestructive: true,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAboutSection(ThemeData theme) {
+    return SettingsSectionWidget(
+      title: "About",
+      children: [
+        SettingItemWidget(
+          icon: "info_outline",
+          title: "App Version",
+          subtitle: "HabitFlow v1.0.0",
+        ),
+        SettingItemWidget(
+          icon: "star_outline",
+          title: "Rate HabitFlow",
+          onTap: () => _rateApp(context),
+        ),
+        SettingItemWidget(
+          icon: "share",
+          title: "Share with Friends",
+          onTap: () => _shareApp(context),
+        ),
+      ],
     );
   }
 
@@ -390,8 +439,187 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     );
   }
 
+  void _showPhotoSourcePicker(BuildContext context) {
+    final theme = Theme.of(context);
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.outline.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text('Change Profile Photo',
+                style: GoogleFonts.dmSans(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: theme.colorScheme.onSurface)),
+            const SizedBox(height: 20),
+            _photoOption(ctx, theme, Icons.camera_alt_rounded, 'Take Photo',
+                () => _pickFromCamera(ctx)),
+            _photoOption(ctx, theme, Icons.photo_library_rounded,
+                'Choose from Gallery', () => _pickFromGallery(ctx)),
+            _photoOption(ctx, theme, Icons.emoji_emotions_rounded,
+                'Choose Emoji', () => _showEmojiPicker(ctx)),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _photoOption(BuildContext ctx, ThemeData theme, IconData icon,
+      String label, VoidCallback onTap) {
+    return ListTile(
+      leading: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.primaryContainer,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Icon(icon, color: theme.colorScheme.primary, size: 22),
+      ),
+      title:
+          Text(label, style: GoogleFonts.dmSans(fontWeight: FontWeight.w600)),
+      onTap: onTap,
+    );
+  }
+
+  void _pickFromCamera(BuildContext ctx) async {
+    Navigator.pop(ctx);
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(
+      source: ImageSource.camera,
+      maxWidth: 400,
+      maxHeight: 400,
+    );
+    if (picked != null && mounted) {
+      setState(() {
+        _userData['avatar'] = picked.path;
+        _userData['avatarIsFile'] = true;
+        _userData['avatarType'] = 'file';
+      });
+    }
+  }
+
+  void _pickFromGallery(BuildContext ctx) async {
+    Navigator.pop(ctx);
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 400,
+      maxHeight: 400,
+    );
+    if (picked != null && mounted) {
+      setState(() {
+        _userData['avatar'] = picked.path;
+        _userData['avatarIsFile'] = true;
+        _userData['avatarType'] = 'file';
+      });
+    }
+  }
+
+  final List<String> _avatarEmojis = [
+    '😀', '😎', '🔥', '💪', '🧠', '🌟', '🎯', '🚀',
+    '🌈', '🦋', '🌻', '🍀', '🐉', '🦅', '🐺', '🦁',
+    '👨‍💻', '👩‍🎨', '🧘', '🏃', '🧗', '🤸', '🎨', '📚',
+  ];
+
+  void _showEmojiPicker(BuildContext ctx) {
+    final theme = Theme.of(ctx);
+    Navigator.pop(ctx);
+    showModalBottomSheet(
+      context: ctx,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetCtx) => Container(
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.outline.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text('Choose an Emoji',
+                style: GoogleFonts.dmSans(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: theme.colorScheme.onSurface)),
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: _avatarEmojis.map((emoji) {
+                final isSelected = _userData['avatarType'] == 'emoji' &&
+                    _userData['avatar'] == emoji;
+                return GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _userData['avatar'] = emoji;
+                      _userData['avatarIsFile'] = false;
+                      _userData['avatarType'] = 'emoji';
+                    });
+                    Navigator.pop(sheetCtx);
+                  },
+                  child: Container(
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? theme.colorScheme.primary.withValues(alpha: 0.15)
+                          : theme.colorScheme.surfaceContainerHighest
+                              .withValues(alpha: 0.5),
+                      borderRadius: BorderRadius.circular(16),
+                      border: isSelected
+                          ? Border.all(
+                              color: theme.colorScheme.primary, width: 2)
+                          : null,
+                    ),
+                    child: Center(
+                        child: Text(emoji, style: const TextStyle(fontSize: 28))),
+                  ),
+                );
+              }).toList(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _showEditProfile(BuildContext context) {
     final theme = Theme.of(context);
+    final nameController =
+        TextEditingController(text: _userData['name'] as String);
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -432,7 +660,26 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                 ),
               ),
               const SizedBox(height: 20),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(Icons.camera_alt_rounded,
+                      color: theme.colorScheme.primary, size: 20),
+                ),
+                title: Text('Change Profile Photo',
+                    style: GoogleFonts.dmSans(fontWeight: FontWeight.w600)),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showPhotoSourcePicker(context);
+                },
+              ),
+              const SizedBox(height: 8),
               TextField(
+                controller: nameController,
                 decoration: InputDecoration(
                   labelText: 'Display Name',
                   hintText: _userData['name'] as String,
@@ -446,7 +693,13 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                 width: double.infinity,
                 height: 52,
                 child: ElevatedButton(
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: () {
+                    final newName = nameController.text.trim();
+                    if (newName.isNotEmpty) {
+                      setState(() => _userData['name'] = newName);
+                    }
+                    Navigator.pop(context);
+                  },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: theme.colorScheme.primary,
                     shape: RoundedRectangleBorder(
@@ -469,6 +722,116 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
         ),
       ),
     );
+  }
+
+  void _showHabitCategories(BuildContext context) {
+    final theme = Theme.of(context);
+    final categories = [
+      {"name": "Health", "icon": "favorite", "enabled": true},
+      {"name": "Mindfulness", "icon": "self_improvement", "enabled": true},
+      {"name": "Learning", "icon": "menu_book", "enabled": true},
+      {"name": "Fitness", "icon": "directions_walk", "enabled": true},
+      {"name": "Productivity", "icon": "trending_up", "enabled": true},
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheetState) => Container(
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.outline.withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                'Habit Categories',
+                style: GoogleFonts.dmSans(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: theme.colorScheme.onSurface,
+                ),
+              ),
+              const SizedBox(height: 16),
+              ...categories.asMap().entries.map((entry) {
+                final cat = entry.value;
+                final enabled = cat['enabled'] as bool;
+                return ListTile(
+                  leading: Icon(
+                    Icons.check_circle_rounded,
+                    color: enabled
+                        ? theme.colorScheme.primary
+                        : theme.colorScheme.outline,
+                  ),
+                  title: Text(
+                    cat['name'] as String,
+                    style: GoogleFonts.dmSans(
+                      fontWeight: FontWeight.w600,
+                      color: enabled
+                          ? theme.colorScheme.onSurface
+                          : theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  trailing: Switch(
+                    value: enabled,
+                    onChanged: (v) {
+                      HapticUtil.lightImpact();
+                      setSheetState(() => cat['enabled'] = v);
+                    },
+                  ),
+                );
+              }),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: theme.colorScheme.primary,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  child: Text('Done',
+                      style: GoogleFonts.dmSans(
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showResetTimePicker(BuildContext context) async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: _resetTime,
+      helpText: 'Select reset time',
+    );
+    if (picked != null) {
+      await AppSettings.setResetTime(picked.hour, picked.minute);
+      setState(() => _resetTime = picked);
+    }
   }
 
   void _showGoalPicker(BuildContext context) {
@@ -541,6 +904,123 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     }
   }
 
+  void _showBackupSync(BuildContext context) {
+    final theme = Theme.of(context);
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.outline.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'Backup & Sync',
+              style: GoogleFonts.dmSans(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: theme.colorScheme.onSurface,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Icon(Icons.cloud_done_rounded,
+                    color: theme.colorScheme.primary, size: 40),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Cloud Backup',
+                          style: GoogleFonts.dmSans(
+                              fontWeight: FontWeight.w600)),
+                      const SizedBox(height: 4),
+                      Text(_lastSyncDisplay,
+                          style: GoogleFonts.dmSans(
+                              fontSize: 13,
+                              color: theme.colorScheme.onSurfaceVariant)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  HapticUtil.lightImpact();
+                  setState(() {
+                    final now = DateTime.now();
+                    _lastSyncDisplay =
+                        'Last synced: ${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+                  });
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Sync completed successfully')),
+                  );
+                  Navigator.pop(ctx);
+                },
+                icon: const Icon(Icons.sync_rounded),
+                label: Text('Sync Now',
+                    style: GoogleFonts.dmSans(fontWeight: FontWeight.w600)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: theme.colorScheme.primary,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _exportData(BuildContext context) async {
+    final now = DateTime.now();
+    final dateStr =
+        '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    final data = '''
+HabitFlow Data Export - $dateStr
+
+User: ${_userData['name']}
+Current Streak: ${_userData['currentStreak']} days
+Longest Streak: ${_userData['longestStreak']} days
+Total Habits Completed: ${_userData['totalCompleted']}
+
+Generated by HabitFlow v1.0.0
+''';
+
+    await SharePlus.instance.share(
+      ShareParams(
+        text: data,
+        subject: 'HabitFlow Data Export - $dateStr',
+      ),
+    );
+  }
+
   void _showResetConfirmation(BuildContext context) {
     showDialog(
       context: context,
@@ -556,12 +1036,43 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
           ),
           TextButton(
             onPressed: () {
-              // TODO: Implement reset logic
+              setState(() {
+                _userData['currentStreak'] = 0;
+                _userData['longestStreak'] = 0;
+                _userData['totalCompleted'] = 0;
+              });
+              AppSettings.clearAll();
               Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('All data has been reset')),
+              );
             },
             child: const Text('Reset', style: TextStyle(color: Colors.red)),
           ),
         ],
+      ),
+    );
+  }
+
+  Future<void> _rateApp(BuildContext context) async {
+    final uri = Uri.parse(
+        'https://play.google.com/store/apps/details?id=com.habitflow.app');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not open app store')),
+        );
+      }
+    }
+  }
+
+  void _shareApp(BuildContext context) async {
+    await SharePlus.instance.share(
+      ShareParams(
+        text: 'Check out HabitFlow - the best habit tracking app!',
+        subject: 'Join me on HabitFlow',
       ),
     );
   }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../../core/app_settings.dart';
 
 class FrequencySelectionWidget extends StatelessWidget {
   final int frequency;
@@ -88,7 +89,7 @@ class FrequencySelectionWidget extends StatelessWidget {
                     max: 7,
                     divisions: 6,
                     onChanged: (value) {
-                      HapticFeedback.selectionClick();
+                      HapticUtil.selectionClick();
                       onFrequencyChanged(value.toInt());
                     },
                   ),

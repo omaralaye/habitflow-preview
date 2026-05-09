@@ -6,3 +6,4 @@ export '../services/auth_service.dart';
 export '../widgets/custom_icon_widget.dart';
 export '../widgets/custom_image_widget.dart';
 export '../theme/app_theme.dart';
+export 'app_settings.dart';

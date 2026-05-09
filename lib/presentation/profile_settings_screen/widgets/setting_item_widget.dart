@@ -39,7 +39,7 @@ class SettingItemWidget extends StatelessWidget {
     return InkWell(
       onTap: enabled && onTap != null
           ? () {
-              HapticFeedback.lightImpact();
+              HapticUtil.lightImpact();
               onTap!();
             }
           : null,

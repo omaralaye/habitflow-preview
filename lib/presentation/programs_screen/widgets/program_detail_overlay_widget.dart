@@ -325,7 +325,7 @@ class ProgramDetailOverlayWidget extends StatelessWidget {
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: () {
-                    HapticFeedback.mediumImpact();
+                    HapticUtil.mediumImpact();
                     onStartProgram();
                   },
                   style: ElevatedButton.styleFrom(

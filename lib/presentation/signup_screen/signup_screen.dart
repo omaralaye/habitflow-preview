@@ -1,8 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/app_export.dart';
-import '../login_screen/login_screen.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -22,13 +24,45 @@ class _SignupScreenState extends State<SignupScreen> {
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   String? _errorMessage;
+  StreamSubscription<AuthState>? _authSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    _authSubscription = _authService.onAuthChange(_onAuthChanged);
+  }
 
   @override
   void dispose() {
+    _authSubscription?.cancel();
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
+  }
+
+  void _onAuthChanged(AuthState state) {
+    if (state.session != null && mounted) {
+      _navigateAfterAuth();
+    }
+  }
+
+  Future<void> _navigateAfterAuth() async {
+    final prefs = await SharedPreferences.getInstance();
+    final hasCompletedOnboarding =
+        prefs.getBool('hasCompletedOnboarding') ?? false;
+    if (mounted) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          Navigator.pushReplacementNamed(
+            context,
+            hasCompletedOnboarding
+                ? AppRoutes.navigationContainer
+                : AppRoutes.onboardingFlow,
+          );
+        }
+      });
+    }
   }
 
   Future<void> _handleSignup() async {
@@ -46,17 +80,7 @@ class _SignupScreenState extends State<SignupScreen> {
       );
 
       if (mounted) {
-        // Navigate after frame to avoid hit-test issues
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const LoginScreen(),
-              ),
-            );
-          }
-        });
+        _navigateAfterAuth();
       }
     } on AuthException catch (e) {
       setState(() {
@@ -71,6 +95,21 @@ class _SignupScreenState extends State<SignupScreen> {
         setState(() {
           _isLoading = false;
         });
+      }
+    }
+  }
+
+  Future<void> _handleGoogleSignIn() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+    try {
+      await _authService.signInWithGoogle();
+    } catch (e) {
+      if (mounted) {
+        setState(() => _errorMessage = 'Google sign-in failed. Please try again.');
+        setState(() => _isLoading = false);
       }
     }
   }
@@ -164,7 +203,7 @@ class _SignupScreenState extends State<SignupScreen> {
                               color: theme.colorScheme.onSurfaceVariant,
                             ),
                             onPressed: () {
-                              HapticFeedback.lightImpact();
+                              HapticUtil.lightImpact();
                               setState(() {
                                 _obscurePassword = !_obscurePassword;
                               });
@@ -200,7 +239,7 @@ class _SignupScreenState extends State<SignupScreen> {
                               color: theme.colorScheme.onSurfaceVariant,
                             ),
                             onPressed: () {
-                              HapticFeedback.lightImpact();
+                              HapticUtil.lightImpact();
                               setState(() {
                                 _obscureConfirmPassword = !_obscureConfirmPassword;
                               });
@@ -275,6 +314,36 @@ class _SignupScreenState extends State<SignupScreen> {
                           ),
                   ),
                 ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(child: Divider(color: theme.colorScheme.outline.withValues(alpha: 0.3))),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Text('or',
+                          style: GoogleFonts.dmSans(
+                              fontSize: 13, color: theme.colorScheme.onSurfaceVariant)),
+                    ),
+                    Expanded(child: Divider(color: theme.colorScheme.outline.withValues(alpha: 0.3))),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: OutlinedButton.icon(
+                    onPressed: _isLoading ? null : _handleGoogleSignIn,
+                    icon: Image.asset('assets/images/google_logo.png',
+                        height: 20, width: 20, errorBuilder: (_, __, ___) => const Icon(Icons.g_mobiledata_rounded)),
+                    label: Text('Sign up with Google',
+                        style: GoogleFonts.dmSans(fontSize: 15, fontWeight: FontWeight.w600)),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: theme.colorScheme.onSurface,
+                      side: BorderSide(color: theme.colorScheme.outline.withValues(alpha: 0.4)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                  ),
+                ),
                 const SizedBox(height: 32),
                 Center(
                   child: Row(
@@ -289,7 +358,7 @@ class _SignupScreenState extends State<SignupScreen> {
                       ),
                       TextButton(
                         onPressed: () {
-                          HapticFeedback.lightImpact();
+                          HapticUtil.lightImpact();
                           Navigator.pop(context);
                         },
                         child: Text(

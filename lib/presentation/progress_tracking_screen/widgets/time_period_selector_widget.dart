@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../../core/app_settings.dart';
 import 'package:sizer/sizer.dart';
 
 /// Time period selector widget with segmented control
@@ -44,7 +45,7 @@ class TimePeriodSelectorWidget extends StatelessWidget {
     return Expanded(
       child: GestureDetector(
         onTap: () {
-          HapticFeedback.lightImpact();
+          HapticUtil.lightImpact();
           onPeriodChanged(period);
         },
         child: Container(

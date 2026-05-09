@@ -92,7 +92,7 @@ class DurationSelectionWidget extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: () {
-          HapticFeedback.selectionClick();
+          HapticUtil.selectionClick();
           onDurationSelected(minutes);
         },
         borderRadius: BorderRadius.circular(16),

@@ -69,7 +69,7 @@ class EmptyProgramsWidget extends StatelessWidget {
             // CTA Button
             ElevatedButton(
               onPressed: () {
-                HapticFeedback.mediumImpact();
+                HapticUtil.mediumImpact();
                 onExplorePrograms();
               },
               style: ElevatedButton.styleFrom(

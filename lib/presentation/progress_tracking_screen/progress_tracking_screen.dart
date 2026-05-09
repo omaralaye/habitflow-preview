@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../core/app_settings.dart';
 import 'package:sizer/sizer.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:share_plus/share_plus.dart';
 
 /// Progress Tracking Screen - Habit statistics and analytics
 class ProgressTrackingScreen extends StatefulWidget {
@@ -84,14 +86,15 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
           IconButton(
             icon: Icon(Icons.share_outlined, color: theme.colorScheme.onSurface),
             onPressed: () {
-              HapticFeedback.lightImpact();
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: const Text('Progress shared!'),
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-              );
+              HapticUtil.lightImpact();
+              final text = 'My FlowFit Progress:\n'
+                  '🔥 Current Streak: ${_overallStats['currentStreak']} days\n'
+                  '🏆 Best Streak: ${_overallStats['longestStreak']} days\n'
+                  '✅ Total Completed: ${_overallStats['totalCompleted']}\n'
+                  '⭐ Completion Rate: ${((_overallStats['completionRate'] as double) * 100).toInt()}%\n'
+                  '📊 Active Habits: ${_overallStats['activeHabits']}\n'
+                  '💯 Perfect Days: ${_overallStats['perfectDays']}';
+              SharePlus.instance.share(ShareParams(text: text));
             },
           ),
         ],
@@ -219,7 +222,7 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
         final isSelected = _selectedPeriod == period;
         return GestureDetector(
           onTap: () {
-            HapticFeedback.lightImpact();
+            HapticUtil.lightImpact();
             setState(() => _selectedPeriod = period);
           },
           child: AnimatedContainer(

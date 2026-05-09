@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../core/app_settings.dart';
 
 /// Navigation item configuration for the bottom bar
 class CustomBottomBarItem {
@@ -159,7 +160,7 @@ class CustomBottomBar extends StatelessWidget {
   }
 
   void _handleNavigation(BuildContext context, String route) {
-    HapticFeedback.lightImpact();
+    HapticUtil.lightImpact();
     if (currentRoute == route) return;
     if (onNavigate != null) {
       onNavigate!(route);
