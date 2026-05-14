@@ -1,28 +1,45 @@
 import 'package:flowfit/core/app_export.dart';
 import 'package:flowfit/core/challenge_manager.dart';
+import 'package:flowfit/data/repositories/habit_repository.dart';
+import 'package:flowfit/data/repositories/user_repository.dart';
+import 'package:flowfit/data/repositories/progress_repository.dart';
+import 'package:flowfit/presentation/habit_focus_screen/habit_focus_screen.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:sizer/sizer.dart';
 
-/// Home/Today Screen - Daily habit check-in dashboard
 class HomeTodayScreen extends StatefulWidget {
   final VoidCallback? onSeeAllHabits;
+  final VoidCallback? onViewChallenge;
 
-  const HomeTodayScreen({super.key, this.onSeeAllHabits});
+  const HomeTodayScreen({super.key, this.onSeeAllHabits, this.onViewChallenge});
 
   @override
   State<HomeTodayScreen> createState() => _HomeTodayScreenState();
 }
 
 class _HomeTodayScreenState extends State<HomeTodayScreen> {
-  final String _userName = 'Alex';
-  final int _currentStreak = 14;
   final DateTime _today = DateTime.now();
+  final HabitRepository _habitRepository = HabitRepository();
+  final UserRepository _userRepository = UserRepository();
+  final ProgressRepository _progressRepository = ProgressRepository();
+  late final String _userName;
+  int _currentStreak = 0;
+
+  static const _days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  static const _months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+  List<Habit> _todayHabits = [];
+  List<WeeklyDataPoint> _weeklyData = [];
 
   @override
   void initState() {
     super.initState();
     ChallengeManager.addListener(_onChallengesChanged);
+    _habitRepository.syncStreaks(_progressRepository);
+    _todayHabits = _habitRepository.getTodayHabits();
+    _weeklyData = _progressRepository.getWeeklyData();
+    _userName = _userRepository.getUserProfile()?.name.split(' ').first ?? 'there';
+    _currentStreak = _progressRepository.getOverallStats()?.currentStreak ?? 0;
   }
 
   @override
@@ -35,83 +52,11 @@ class _HomeTodayScreenState extends State<HomeTodayScreen> {
     if (mounted) setState(() {});
   }
 
-  final List<Map<String, dynamic>> _todayHabits = [
-    {
-      'id': 1,
-      'title': 'Morning Meditation',
-      'icon': Icons.self_improvement_rounded,
-      'color': 0xFF7C3AED,
-      'duration': '10 min',
-      'category': 'Mindfulness',
-      'isCompleted': true,
-      'streak': 14,
-    },
-    {
-      'id': 2,
-      'title': 'Drink 8 Glasses of Water',
-      'icon': Icons.water_drop_rounded,
-      'color': 0xFF0EA5E9,
-      'duration': 'All day',
-      'category': 'Health',
-      'isCompleted': true,
-      'streak': 7,
-    },
-    {
-      'id': 3,
-      'title': 'Read 20 Pages',
-      'icon': Icons.menu_book_rounded,
-      'color': 0xFFED8936,
-      'duration': '20 min',
-      'category': 'Learning',
-      'isCompleted': false,
-      'streak': 5,
-    },
-    {
-      'id': 4,
-      'title': 'Evening Walk',
-      'icon': Icons.directions_walk_rounded,
-      'color': 0xFF00C896,
-      'duration': '30 min',
-      'category': 'Fitness',
-      'isCompleted': false,
-      'streak': 10,
-    },
-    {
-      'id': 5,
-      'title': 'Gratitude Journal',
-      'icon': Icons.edit_note_rounded,
-      'color': 0xFFEC4899,
-      'duration': '5 min',
-      'category': 'Mindfulness',
-      'isCompleted': false,
-      'streak': 3,
-    },
-    {
-      'id': 6,
-      'title': 'No Social Media Before 9AM',
-      'icon': Icons.phone_android_rounded,
-      'color': 0xFF64748B,
-      'duration': 'Morning',
-      'category': 'Productivity',
-      'isCompleted': true,
-      'streak': 8,
-    },
-  ];
-
-  final List<Map<String, dynamic>> _weeklyData = [
-    {'day': 'M', 'completed': true},
-    {'day': 'T', 'completed': true},
-    {'day': 'W', 'completed': true},
-    {'day': 'T', 'completed': false},
-    {'day': 'F', 'completed': true},
-    {'day': 'S', 'completed': true},
-    {'day': 'S', 'completed': false},
-  ];
-
   int get _completedCount =>
-      _todayHabits.where((h) => h['isCompleted'] == true).length;
+      _todayHabits.where((h) => h.isCompleted).length;
 
-  double get _completionRate => _completedCount / _todayHabits.length;
+  double get _completionRate =>
+      _todayHabits.isEmpty ? 0 : _completedCount / _todayHabits.length;
 
   String _getGreeting() {
     final hour = _today.hour;
@@ -120,28 +65,23 @@ class _HomeTodayScreenState extends State<HomeTodayScreen> {
     return 'Good evening';
   }
 
-  String _getDayName(int weekday) {
-    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    return days[weekday - 1];
-  }
-
   void _toggleHabit(int id) {
     HapticUtil.mediumImpact();
+    _habitRepository.toggleComplete(id);
+    _habitRepository.syncStreaks(_progressRepository);
     setState(() {
-      final index = _todayHabits.indexWhere((h) => h['id'] == id);
-      if (index != -1) {
-        _todayHabits[index]['isCompleted'] =
-            !_todayHabits[index]['isCompleted'];
-      }
+      _todayHabits = _habitRepository.getTodayHabits();
+      _weeklyData = _progressRepository.getWeeklyData();
+      _currentStreak = _progressRepository.getOverallStats()?.currentStreak ?? 0;
     });
   }
 
-  void _editHabit(Map<String, dynamic> habit) async {
+  void _editHabit(Habit habit) async {
     HapticUtil.mediumImpact();
     final habitArgs = {
-      'name': habit['title'] as String,
-      'category': habit['category'] as String,
-      'frequency': habit['frequency'] ?? 'Daily',
+      'name': habit.title,
+      'category': habit.category,
+      'frequency': 'Daily',
       'reminderEnabled': true,
       'reminderTime': null,
     };
@@ -151,18 +91,12 @@ class _HomeTodayScreenState extends State<HomeTodayScreen> {
       arguments: habitArgs,
     );
     if (result is Map<String, dynamic>) {
-      setState(() {
-        final index = _todayHabits.indexWhere((h) => h['id'] == habit['id']);
-        if (index != -1) {
-          _todayHabits[index]['title'] = result['name'];
-          _todayHabits[index]['category'] = result['category'];
-          _todayHabits[index]['frequency'] = result['frequency'];
-        }
-      });
+      _habitRepository.updateHabit(habit.id, result);
+      setState(() => _todayHabits = _habitRepository.getTodayHabits());
     }
   }
 
-  Future<void> _confirmDeleteHabit(Map<String, dynamic> habit) async {
+  Future<void> _confirmDeleteHabit(Habit habit) async {
     HapticUtil.mediumImpact();
     final theme = Theme.of(context);
     final confirmed = await showDialog<bool>(
@@ -178,7 +112,7 @@ class _HomeTodayScreenState extends State<HomeTodayScreen> {
           ),
         ),
         content: Text(
-          'Are you sure you want to permanently delete "${habit['title']}"? This action cannot be undone.',
+          'Are you sure you want to permanently delete "${habit.title}"? This action cannot be undone.',
           style: GoogleFonts.dmSans(
             fontSize: 14,
             color: theme.colorScheme.onSurfaceVariant,
@@ -187,42 +121,30 @@ class _HomeTodayScreenState extends State<HomeTodayScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text(
-              'Cancel',
-              style: GoogleFonts.dmSans(
-                fontWeight: FontWeight.w600,
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
+            child: Text('Cancel', style: GoogleFonts.dmSans(fontWeight: FontWeight.w600, color: theme.colorScheme.onSurfaceVariant)),
           ),
           ElevatedButton(
             onPressed: () => Navigator.of(ctx).pop(true),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red.shade600,
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
-            child: Text(
-              'Delete',
-              style: GoogleFonts.dmSans(fontWeight: FontWeight.w600),
-            ),
+            child: Text('Delete', style: GoogleFonts.dmSans(fontWeight: FontWeight.w600)),
           ),
         ],
       ),
     );
     if (confirmed == true) {
-      setState(() {
-        _todayHabits.removeWhere((h) => h['id'] == habit['id']);
-      });
+      _habitRepository.removeHabit(habit.id);
+      setState(() => _todayHabits = _habitRepository.getTodayHabits());
     }
   }
 
-  void _showHabitOptions(Map<String, dynamic> habit) {
+  void _showHabitOptions(Habit habit) {
     HapticUtil.mediumImpact();
     final theme = Theme.of(context);
-    final color = Color(habit['color'] as int);
+    final color = habit.color;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -237,8 +159,7 @@ class _HomeTodayScreenState extends State<HomeTodayScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 40,
-              height: 4,
+              width: 40, height: 4,
               decoration: BoxDecoration(
                 color: theme.colorScheme.outline.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(2),
@@ -248,26 +169,16 @@ class _HomeTodayScreenState extends State<HomeTodayScreen> {
             Row(
               children: [
                 Container(
-                  width: 44,
-                  height: 44,
+                  width: 44, height: 44,
                   decoration: BoxDecoration(
                     color: color.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child:
-                      Icon(habit['icon'] as IconData, color: color, size: 22),
+                  child: Icon(habit.icon, color: color, size: 22),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Text(
-                    habit['title'] as String,
-                    style: GoogleFonts.dmSans(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: theme.colorScheme.onSurface,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                  child: Text(habit.title, style: GoogleFonts.dmSans(fontSize: 16, fontWeight: FontWeight.w700, color: theme.colorScheme.onSurface), overflow: TextOverflow.ellipsis),
                 ),
               ],
             ),
@@ -275,47 +186,22 @@ class _HomeTodayScreenState extends State<HomeTodayScreen> {
             ListTile(
               leading: Container(
                 padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(Icons.edit_rounded,
-                    color: theme.colorScheme.primary, size: 20),
+                decoration: BoxDecoration(color: theme.colorScheme.primaryContainer, borderRadius: BorderRadius.circular(10)),
+                child: Icon(Icons.edit_rounded, color: theme.colorScheme.primary, size: 20),
               ),
-              title: Text(
-                'Edit Habit',
-                style: GoogleFonts.dmSans(
-                    fontWeight: FontWeight.w600,
-                    color: theme.colorScheme.onSurface),
-              ),
-              onTap: () {
-                Navigator.of(ctx).pop();
-                _editHabit(habit);
-              },
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
+              title: Text('Edit Habit', style: GoogleFonts.dmSans(fontWeight: FontWeight.w600, color: theme.colorScheme.onSurface)),
+              onTap: () { Navigator.of(ctx).pop(); _editHabit(habit); },
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
             ListTile(
               leading: Container(
                 padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.red.shade50,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(Icons.delete_rounded,
-                    color: Colors.red.shade600, size: 20),
+                decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(10)),
+                child: Icon(Icons.delete_rounded, color: Colors.red.shade600, size: 20),
               ),
-              title: Text(
-                'Delete Habit',
-                style: GoogleFonts.dmSans(
-                    fontWeight: FontWeight.w600, color: Colors.red.shade600),
-              ),
-              onTap: () {
-                Navigator.of(ctx).pop();
-                _confirmDeleteHabit(habit);
-              },
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
+              title: Text('Delete Habit', style: GoogleFonts.dmSans(fontWeight: FontWeight.w600, color: Colors.red.shade600)),
+              onTap: () { Navigator.of(ctx).pop(); _confirmDeleteHabit(habit); },
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
           ],
         ),
@@ -326,7 +212,6 @@ class _HomeTodayScreenState extends State<HomeTodayScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       body: CustomScrollView(
@@ -339,7 +224,6 @@ class _HomeTodayScreenState extends State<HomeTodayScreen> {
               children: [
                 _buildStreakAndProgress(theme),
                 _buildWeeklyOverview(theme),
-                if (AppSettings.motivationalQuotes) _buildQuoteCard(theme),
                 _buildActiveChallengeCard(theme),
                 _buildTodayHabitsSection(theme),
                 SizedBox(height: 10.h),
@@ -349,14 +233,17 @@ class _HomeTodayScreenState extends State<HomeTodayScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => Navigator.pushNamed(context, '/add-habit-screen'),
+        onPressed: () async {
+          final result = await Navigator.pushNamed(context, '/add-habit-screen');
+          if (result is Map<String, dynamic> && mounted) {
+            _habitRepository.addHabit(result);
+            setState(() => _todayHabits = _habitRepository.getTodayHabits());
+          }
+        },
         backgroundColor: theme.colorScheme.primary,
         foregroundColor: theme.colorScheme.onPrimary,
         icon: const Icon(Icons.add_rounded),
-        label: Text(
-          'Add Habit',
-          style: GoogleFonts.dmSans(fontWeight: FontWeight.w600),
-        ),
+        label: Text('Add Habit', style: GoogleFonts.dmSans(fontWeight: FontWeight.w600)),
       ),
     );
   }
@@ -395,68 +282,31 @@ class _HomeTodayScreenState extends State<HomeTodayScreen> {
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
-                                colors: [
-                                  theme.colorScheme.primary,
-                                  theme.colorScheme.primary.withValues(
-                                    alpha: 0.7,
-                                  ),
-                                ],
+                                colors: [theme.colorScheme.primary, theme.colorScheme.primary.withValues(alpha: 0.7)],
                               ),
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            child: const Icon(
-                              Icons.check_circle_rounded,
-                              color: Colors.white,
-                              size: 20,
-                            ),
+                            child: const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
                           ),
                           const SizedBox(width: 10),
-                          Text(
-                            'HabitFlow',
-                            style: GoogleFonts.dmSans(
-                              fontSize: 22,
-                              fontWeight: FontWeight.w800,
-                              color: theme.colorScheme.onSurface,
-                              letterSpacing: -0.5,
-                            ),
-                          ),
+                          Text('HabitFlow', style: GoogleFonts.dmSans(fontSize: 22, fontWeight: FontWeight.w800, color: theme.colorScheme.onSurface, letterSpacing: -0.5)),
                         ],
                       ),
                       Container(
                         decoration: BoxDecoration(
-                          color: theme.colorScheme.surfaceContainerHighest
-                              .withValues(alpha: 0.5),
+                          color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: IconButton(
-                          icon: Icon(
-                            Icons.notifications_outlined,
-                            color: theme.colorScheme.onSurface,
-                            size: 22,
-                          ),
-                          onPressed: () =>
-                              Navigator.pushNamed(context, AppRoutes.notificationsScreen),
-
+                          icon: Icon(Icons.notifications_outlined, color: theme.colorScheme.onSurface, size: 22),
+                          onPressed: () => Navigator.pushNamed(context, AppRoutes.notificationsScreen),
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 12),
-                  Text(
-                    '${_getGreeting()}, $_userName! 👋',
-                    style: GoogleFonts.dmSans(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                      color: theme.colorScheme.onSurface,
-                    ),
-                  ),
-                  Text(
-                    '${_getDayName(_today.weekday)}, ${_today.day} ${_getMonthName(_today.month)}',
-                    style: GoogleFonts.dmSans(
-                      fontSize: 13,
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
+                  Text('${_getGreeting()}, $_userName! 👋', style: GoogleFonts.dmSans(fontSize: 18, fontWeight: FontWeight.w600, color: theme.colorScheme.onSurface)),
+                  Text('${_days[_today.weekday - 1]}, ${_today.day} ${_months[_today.month - 1]}', style: GoogleFonts.dmSans(fontSize: 13, color: theme.colorScheme.onSurfaceVariant)),
                 ],
               ),
             ),
@@ -464,24 +314,6 @@ class _HomeTodayScreenState extends State<HomeTodayScreen> {
         ),
       ),
     );
-  }
-
-  String _getMonthName(int month) {
-    const months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
-    return months[month - 1];
   }
 
   Widget _buildStreakAndProgress(ThemeData theme) {
@@ -496,10 +328,7 @@ class _HomeTodayScreenState extends State<HomeTodayScreen> {
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [
-                      const Color(0xFFFF6B35),
-                      const Color(0xFFFF6B35).withValues(alpha: 0.8),
-                    ],
+                    colors: [const Color(0xFFFF6B35), const Color(0xFFFF6B35).withValues(alpha: 0.8)],
                   ),
                   borderRadius: BorderRadius.circular(20),
                 ),
@@ -510,21 +339,8 @@ class _HomeTodayScreenState extends State<HomeTodayScreen> {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          '$_currentStreak days',
-                          style: GoogleFonts.dmSans(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.white,
-                          ),
-                        ),
-                        Text(
-                          'Current Streak',
-                          style: GoogleFonts.dmSans(
-                            fontSize: 12,
-                            color: Colors.white.withValues(alpha: 0.85),
-                          ),
-                        ),
+                        Text('$_currentStreak days', style: GoogleFonts.dmSans(fontSize: 20, fontWeight: FontWeight.w800, color: Colors.white)),
+                        Text('Current Streak', style: GoogleFonts.dmSans(fontSize: 12, color: Colors.white.withValues(alpha: 0.85))),
                       ],
                     ),
                   ],
@@ -539,16 +355,8 @@ class _HomeTodayScreenState extends State<HomeTodayScreen> {
               decoration: BoxDecoration(
                 color: theme.colorScheme.surface,
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: theme.colorScheme.outline.withValues(alpha: 0.15),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: theme.colorScheme.shadow.withValues(alpha: 0.05),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
+                border: Border.all(color: theme.colorScheme.outline.withValues(alpha: 0.15)),
+                boxShadow: [BoxShadow(color: theme.colorScheme.shadow.withValues(alpha: 0.05), blurRadius: 8, offset: const Offset(0, 2))],
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -556,22 +364,8 @@ class _HomeTodayScreenState extends State<HomeTodayScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        '$_completedCount/${_todayHabits.length}',
-                        style: GoogleFonts.dmSans(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w800,
-                          color: theme.colorScheme.primary,
-                        ),
-                      ),
-                      Text(
-                        '${(_completionRate * 100).toInt()}%',
-                        style: GoogleFonts.dmSans(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
+                      Text('$_completedCount/${_todayHabits.length}', style: GoogleFonts.dmSans(fontSize: 20, fontWeight: FontWeight.w800, color: theme.colorScheme.primary)),
+                      Text('${(_completionRate * 100).toInt()}%', style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w600, color: theme.colorScheme.onSurfaceVariant)),
                     ],
                   ),
                   const SizedBox(height: 8),
@@ -580,20 +374,12 @@ class _HomeTodayScreenState extends State<HomeTodayScreen> {
                     child: LinearProgressIndicator(
                       value: _completionRate,
                       backgroundColor: theme.colorScheme.primaryContainer,
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        theme.colorScheme.primary,
-                      ),
+                      valueColor: AlwaysStoppedAnimation<Color>(theme.colorScheme.primary),
                       minHeight: 6,
                     ),
                   ),
                   const SizedBox(height: 6),
-                  Text(
-                    'Today\'s Progress',
-                    style: GoogleFonts.dmSans(
-                      fontSize: 12,
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
+                  Text('Today\'s Progress', style: GoogleFonts.dmSans(fontSize: 12, color: theme.colorScheme.onSurfaceVariant)),
                 ],
               ),
             ),
@@ -611,129 +397,44 @@ class _HomeTodayScreenState extends State<HomeTodayScreen> {
         decoration: BoxDecoration(
           color: theme.colorScheme.surface,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: theme.colorScheme.outline.withValues(alpha: 0.15),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: theme.colorScheme.shadow.withValues(alpha: 0.05),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          border: Border.all(color: theme.colorScheme.outline.withValues(alpha: 0.15)),
+          boxShadow: [BoxShadow(color: theme.colorScheme.shadow.withValues(alpha: 0.05), blurRadius: 8, offset: const Offset(0, 2))],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'This Week',
-              style: GoogleFonts.dmSans(
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
-                color: theme.colorScheme.onSurface,
-              ),
-            ),
+            Text('This Week', style: GoogleFonts.dmSans(fontSize: 15, fontWeight: FontWeight.w700, color: theme.colorScheme.onSurface)),
             const SizedBox(height: 12),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: List.generate(_weeklyData.length, (index) {
                 final day = _weeklyData[index];
                 final isToday = index == _today.weekday - 1;
-                final isCompleted = day['completed'] as bool;
+                final allDone = day.value >= day.total && day.total > 0;
                 return Column(
                   children: [
                     Container(
-                      width: 36,
-                      height: 36,
+                      width: 36, height: 36,
                       decoration: BoxDecoration(
-                        color: isCompleted
+                        color: allDone
                             ? theme.colorScheme.primary
                             : isToday
                                 ? theme.colorScheme.primaryContainer
-                                : theme.colorScheme.surfaceContainerHighest
-                                    .withValues(alpha: 0.5),
+                                : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
                         shape: BoxShape.circle,
-                        border: isToday
-                            ? Border.all(
-                                color: theme.colorScheme.primary,
-                                width: 2,
-                              )
-                            : null,
+                        border: isToday ? Border.all(color: theme.colorScheme.primary, width: 2) : null,
                       ),
                       child: Center(
-                        child: isCompleted
-                            ? const Icon(
-                                Icons.check_rounded,
-                                color: Colors.white,
-                                size: 18,
-                              )
-                            : Text(
-                                day['day'] as String,
-                                style: GoogleFonts.dmSans(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: isToday
-                                      ? theme.colorScheme.primary
-                                      : theme.colorScheme.onSurfaceVariant,
-                                ),
-                              ),
+                        child: allDone
+                            ? const Icon(Icons.check_rounded, color: Colors.white, size: 18)
+                            : Text(day.label, style: GoogleFonts.dmSans(fontSize: 12, fontWeight: FontWeight.w600, color: isToday ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant)),
                       ),
                     ),
                     const SizedBox(height: 4),
-                    Text(
-                      day['day'] as String,
-                      style: GoogleFonts.dmSans(
-                        fontSize: 11,
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
+                    Text(day.label, style: GoogleFonts.dmSans(fontSize: 11, color: theme.colorScheme.onSurfaceVariant)),
                   ],
                 );
               }),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildQuoteCard(ThemeData theme) {
-    final quote = motivationalQuotesList[_today.day % motivationalQuotesList.length];
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              theme.colorScheme.primary.withValues(alpha: 0.1),
-              theme.colorScheme.primary.withValues(alpha: 0.05),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: theme.colorScheme.primary.withValues(alpha: 0.15),
-          ),
-        ),
-        child: Row(
-          children: [
-            Icon(Icons.format_quote_rounded,
-                color: theme.colorScheme.primary, size: 40),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                '"$quote"',
-                style: GoogleFonts.dmSans(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  fontStyle: FontStyle.italic,
-                  color: theme.colorScheme.onSurface,
-                  height: 1.4,
-                ),
-              ),
             ),
           ],
         ),
@@ -753,18 +454,14 @@ class _HomeTodayScreenState extends State<HomeTodayScreen> {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
       child: InkWell(
-        onTap: () => Navigator.pushNamed(context, '/challenges-screen'),
+        onTap: widget.onViewChallenge ?? () => Navigator.pushNamed(context, '/challenges-screen'),
         borderRadius: BorderRadius.circular(20),
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                color.withValues(alpha: 0.12),
-                color.withValues(alpha: 0.04),
-              ],
+              begin: Alignment.topLeft, end: Alignment.bottomRight,
+              colors: [color.withValues(alpha: 0.12), color.withValues(alpha: 0.04)],
             ),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(color: color.withValues(alpha: 0.2)),
@@ -773,51 +470,21 @@ class _HomeTodayScreenState extends State<HomeTodayScreen> {
             children: [
               Container(
                 padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  IconData(challenge['icon'] as int,
-                      fontFamily: 'MaterialIcons'),
-                  color: color,
-                  size: 24,
-                ),
+                decoration: BoxDecoration(color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12)),
+                child: Icon(IconData(challenge['icon'] as int, fontFamily: 'MaterialIcons'), color: color, size: 24),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      challenge['title'] as String,
-                      style: GoogleFonts.dmSans(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: theme.colorScheme.onSurface,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                    Text(challenge['title'] as String, style: GoogleFonts.dmSans(fontSize: 14, fontWeight: FontWeight.w700, color: theme.colorScheme.onSurface), maxLines: 1, overflow: TextOverflow.ellipsis),
                     const SizedBox(height: 4),
                     Row(
                       children: [
-                        Text(
-                          'Day $currentDay of $totalDays',
-                          style: GoogleFonts.dmSans(
-                            fontSize: 12,
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                        ),
+                        Text('Day $currentDay of $totalDays', style: GoogleFonts.dmSans(fontSize: 12, color: theme.colorScheme.onSurfaceVariant)),
                         const Spacer(),
-                        Text(
-                          '${(progress * 100).toInt()}%',
-                          style: GoogleFonts.dmSans(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: color,
-                          ),
-                        ),
+                        Text('${(progress * 100).toInt()}%', style: GoogleFonts.dmSans(fontSize: 12, fontWeight: FontWeight.w700, color: color)),
                       ],
                     ),
                     const SizedBox(height: 6),
@@ -834,8 +501,7 @@ class _HomeTodayScreenState extends State<HomeTodayScreen> {
                 ),
               ),
               const SizedBox(width: 8),
-              Icon(Icons.chevron_right_rounded,
-                  color: theme.colorScheme.onSurfaceVariant, size: 20),
+              Icon(Icons.chevron_right_rounded, color: theme.colorScheme.onSurfaceVariant, size: 20),
             ],
           ),
         ),
@@ -852,24 +518,10 @@ class _HomeTodayScreenState extends State<HomeTodayScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Today\'s Habits',
-                style: GoogleFonts.dmSans(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: theme.colorScheme.onSurface,
-                ),
-              ),
+              Text('Today\'s Habits', style: GoogleFonts.dmSans(fontSize: 18, fontWeight: FontWeight.w700, color: theme.colorScheme.onSurface)),
               TextButton(
                 onPressed: widget.onSeeAllHabits,
-                child: Text(
-                  'See all',
-                  style: GoogleFonts.dmSans(
-                    fontSize: 13,
-                    color: theme.colorScheme.primary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+                child: Text('See all', style: GoogleFonts.dmSans(fontSize: 13, color: theme.colorScheme.primary, fontWeight: FontWeight.w600)),
               ),
             ],
           ),
@@ -880,59 +532,31 @@ class _HomeTodayScreenState extends State<HomeTodayScreen> {
     );
   }
 
-  Widget _buildHabitCard(ThemeData theme, Map<String, dynamic> habit) {
-    final isCompleted = habit['isCompleted'] as bool;
-    final color = Color(habit['color'] as int);
+  Widget _buildHabitCard(ThemeData theme, Habit habit) {
+    final isCompleted = habit.isCompleted;
+    final color = habit.color;
 
     return Dismissible(
-      key: ValueKey(habit['id']),
+      key: ValueKey(habit.id),
       direction: DismissDirection.endToStart,
       confirmDismiss: (_) async {
         HapticUtil.mediumImpact();
         final confirmed = await showDialog<bool>(
           context: context,
           builder: (ctx) => AlertDialog(
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             backgroundColor: theme.colorScheme.surface,
-            title: Text(
-              'Delete Habit',
-              style: GoogleFonts.dmSans(
-                fontWeight: FontWeight.w700,
-                color: theme.colorScheme.onSurface,
-              ),
-            ),
-            content: Text(
-              'Are you sure you want to permanently delete "${habit['title']}"? This action cannot be undone.',
-              style: GoogleFonts.dmSans(
-                fontSize: 14,
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
+            title: Text('Delete Habit', style: GoogleFonts.dmSans(fontWeight: FontWeight.w700, color: theme.colorScheme.onSurface)),
+            content: Text('Are you sure you want to permanently delete "${habit.title}"? This action cannot be undone.', style: GoogleFonts.dmSans(fontSize: 14, color: theme.colorScheme.onSurfaceVariant)),
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(ctx).pop(false),
-                child: Text(
-                  'Cancel',
-                  style: GoogleFonts.dmSans(
-                    fontWeight: FontWeight.w600,
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
+                child: Text('Cancel', style: GoogleFonts.dmSans(fontWeight: FontWeight.w600, color: theme.colorScheme.onSurfaceVariant)),
               ),
               ElevatedButton(
                 onPressed: () => Navigator.of(ctx).pop(true),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red.shade600,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-                child: Text(
-                  'Delete',
-                  style: GoogleFonts.dmSans(fontWeight: FontWeight.w600),
-                ),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.red.shade600, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+                child: Text('Delete', style: GoogleFonts.dmSans(fontWeight: FontWeight.w600)),
               ),
             ],
           ),
@@ -940,16 +564,12 @@ class _HomeTodayScreenState extends State<HomeTodayScreen> {
         return confirmed == true;
       },
       onDismissed: (_) {
-        setState(() {
-          _todayHabits.removeWhere((h) => h['id'] == habit['id']);
-        });
+        _habitRepository.removeHabit(habit.id);
+        setState(() => _todayHabits = _habitRepository.getTodayHabits());
       },
       background: Container(
         margin: const EdgeInsets.only(bottom: 10),
-        decoration: BoxDecoration(
-          color: Colors.red.shade600,
-          borderRadius: BorderRadius.circular(18),
-        ),
+        decoration: BoxDecoration(color: Colors.red.shade600, borderRadius: BorderRadius.circular(18)),
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: 20),
         child: Column(
@@ -957,132 +577,97 @@ class _HomeTodayScreenState extends State<HomeTodayScreen> {
           children: [
             const Icon(Icons.delete_rounded, color: Colors.white, size: 26),
             const SizedBox(height: 4),
-            Text(
-              'Delete',
-              style: GoogleFonts.dmSans(
-                color: Colors.white,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
+            Text('Delete', style: GoogleFonts.dmSans(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
           ],
         ),
       ),
       child: GestureDetector(
-        onTap: () => _toggleHabit(habit['id'] as int),
+        onTap: () async {
+          await Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => HabitFocusScreen(habit: habit)),
+          );
+          _habitRepository.syncStreaks(_progressRepository);
+          setState(() {
+            _todayHabits = _habitRepository.getTodayHabits();
+            _weeklyData = _progressRepository.getWeeklyData();
+            _currentStreak = _progressRepository.getOverallStats()?.currentStreak ?? 0;
+          });
+        },
         onLongPress: () => _showHabitOptions(habit),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 250),
           margin: const EdgeInsets.only(bottom: 10),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: isCompleted
-                ? color.withValues(alpha: 0.08)
-                : theme.colorScheme.surface,
+            color: isCompleted ? color.withValues(alpha: 0.08) : theme.colorScheme.surface,
             borderRadius: BorderRadius.circular(18),
             border: Border.all(
-              color: isCompleted
-                  ? color.withValues(alpha: 0.3)
-                  : theme.colorScheme.outline.withValues(alpha: 0.15),
+              color: isCompleted ? color.withValues(alpha: 0.3) : theme.colorScheme.outline.withValues(alpha: 0.15),
               width: 1.5,
             ),
-            boxShadow: [
-              BoxShadow(
-                color: theme.colorScheme.shadow.withValues(alpha: 0.04),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
+            boxShadow: [BoxShadow(color: theme.colorScheme.shadow.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
           ),
           child: Row(
             children: [
               Container(
-                width: 48,
-                height: 48,
+                width: 48, height: 48,
                 decoration: BoxDecoration(
-                  color: isCompleted
-                      ? color.withValues(alpha: 0.15)
-                      : color.withValues(alpha: 0.1),
+                  color: isCompleted ? color.withValues(alpha: 0.15) : color.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: Icon(habit['icon'] as IconData, color: color, size: 24),
+                child: Icon(habit.icon, color: color, size: 24),
               ),
               const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      habit['title'] as String,
-                      style: GoogleFonts.dmSans(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: isCompleted
-                            ? theme.colorScheme.onSurface.withValues(alpha: 0.5)
-                            : theme.colorScheme.onSurface,
-                        decoration: isCompleted
-                            ? TextDecoration.lineThrough
-                            : TextDecoration.none,
-                      ),
-                      overflow: TextOverflow.ellipsis,
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(habit.title, style: GoogleFonts.dmSans(fontSize: 15, fontWeight: FontWeight.w600, color: isCompleted ? theme.colorScheme.onSurface.withValues(alpha: 0.5) : theme.colorScheme.onSurface, decoration: isCompleted ? TextDecoration.lineThrough : TextDecoration.none), overflow: TextOverflow.ellipsis),
+                        ),
+                        if (habit.isChallenge) ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: color.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text('CHALLENGE', style: GoogleFonts.dmSans(fontSize: 8, fontWeight: FontWeight.w700, color: color, letterSpacing: 0.5)),
+                          ),
+                        ],
+                      ],
                     ),
                     const SizedBox(height: 4),
                     Row(
                       children: [
-                        Icon(
-                          Icons.local_fire_department_rounded,
-                          size: 13,
-                          color: const Color(0xFFFF6B35),
-                        ),
+                        Icon(Icons.local_fire_department_rounded, size: 13, color: const Color(0xFFFF6B35)),
                         const SizedBox(width: 3),
-                        Text(
-                          '${habit['streak']} day streak',
-                          style: GoogleFonts.dmSans(
-                            fontSize: 12,
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                        ),
+                        Text('${habit.streak} day streak', style: GoogleFonts.dmSans(fontSize: 12, color: theme.colorScheme.onSurfaceVariant)),
                         const SizedBox(width: 10),
-                        Icon(
-                          Icons.access_time_rounded,
-                          size: 13,
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
+                        Icon(Icons.access_time_rounded, size: 13, color: theme.colorScheme.onSurfaceVariant),
                         const SizedBox(width: 3),
-                        Text(
-                          habit['duration'] as String,
-                          style: GoogleFonts.dmSans(
-                            fontSize: 12,
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                        ),
+                        Text(habit.duration, style: GoogleFonts.dmSans(fontSize: 12, color: theme.colorScheme.onSurfaceVariant)),
                       ],
                     ),
                   ],
                 ),
               ),
               const SizedBox(width: 12),
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 250),
-                width: 28,
-                height: 28,
-                decoration: BoxDecoration(
-                  color: isCompleted ? color : Colors.transparent,
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: isCompleted
-                        ? color
-                        : theme.colorScheme.outline.withValues(alpha: 0.4),
-                    width: 2,
+              GestureDetector(
+                onTap: () => _toggleHabit(habit.id),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 250),
+                  width: 28, height: 28,
+                  decoration: BoxDecoration(
+                    color: isCompleted ? color : Colors.transparent,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: isCompleted ? color : theme.colorScheme.outline.withValues(alpha: 0.4), width: 2),
                   ),
+                  child: isCompleted ? const Icon(Icons.check_rounded, color: Colors.white, size: 16) : null,
                 ),
-                child: isCompleted
-                    ? const Icon(
-                        Icons.check_rounded,
-                        color: Colors.white,
-                        size: 16,
-                      )
-                    : null,
               ),
             ],
           ),

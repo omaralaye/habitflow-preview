@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import '../../core/app_settings.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:sizer/sizer.dart';
+
+import '../../core/app_settings.dart';
+import '../../data/repositories/habit_repository.dart';
+import '../../data/models/category.dart';
 
 /// Edit Habit Screen — allows users to update an existing habit's
 /// name, frequency, category, and reminder time.
@@ -14,8 +16,12 @@ class EditHabitScreen extends StatefulWidget {
 }
 
 class _EditHabitScreenState extends State<EditHabitScreen> {
+  final HabitRepository _habitRepository = HabitRepository();
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _nameController;
+
+  late final List<HabitCategory> _categories;
+  late final List<FrequencyOption> _frequencies;
 
   late String _selectedCategory;
   late String _selectedFrequency;
@@ -24,50 +30,12 @@ class _EditHabitScreenState extends State<EditHabitScreen> {
 
   bool _initialized = false;
 
-  final List<Map<String, dynamic>> _categories = [
-    {'label': 'Health', 'icon': Icons.favorite_rounded, 'color': 0xFFFF6B6B},
-    {
-      'label': 'Fitness',
-      'icon': Icons.fitness_center_rounded,
-      'color': 0xFF00C896,
-    },
-    {
-      'label': 'Mindfulness',
-      'icon': Icons.self_improvement_rounded,
-      'color': 0xFF7C3AED,
-    },
-    {'label': 'Learning', 'icon': Icons.menu_book_rounded, 'color': 0xFFED8936},
-    {
-      'label': 'Productivity',
-      'icon': Icons.rocket_launch_rounded,
-      'color': 0xFF0EA5E9,
-    },
-    {'label': 'Social', 'icon': Icons.people_rounded, 'color': 0xFFEC4899},
-    {'label': 'Finance', 'icon': Icons.savings_rounded, 'color': 0xFF38A169},
-    {'label': 'Other', 'icon': Icons.category_rounded, 'color': 0xFF64748B},
-  ];
-
-  final List<Map<String, dynamic>> _frequencies = [
-    {'label': 'Daily', 'icon': Icons.today_rounded, 'desc': 'Every day'},
-    {'label': 'Weekdays', 'icon': Icons.work_rounded, 'desc': 'Mon – Fri'},
-    {'label': 'Weekends', 'icon': Icons.weekend_rounded, 'desc': 'Sat & Sun'},
-    {
-      'label': 'Weekly',
-      'icon': Icons.date_range_rounded,
-      'desc': 'Once a week',
-    },
-    {
-      'label': '3x / Week',
-      'icon': Icons.repeat_rounded,
-      'desc': '3 times a week',
-    },
-    {'label': 'Custom', 'icon': Icons.tune_rounded, 'desc': 'Choose days'},
-  ];
-
   @override
   void initState() {
     super.initState();
     _nameController = TextEditingController();
+    _categories = _habitRepository.formCategories;
+    _frequencies = _habitRepository.frequencies;
   }
 
   @override
@@ -355,13 +323,13 @@ class _EditHabitScreenState extends State<EditHabitScreen> {
       itemCount: _categories.length,
       itemBuilder: (context, index) {
         final cat = _categories[index];
-        final isSelected = _selectedCategory == cat['label'];
-        final color = Color(cat['color'] as int);
+        final isSelected = _selectedCategory == cat.label;
+        final color = cat.color;
 
         return GestureDetector(
           onTap: () {
             HapticUtil.selectionClick();
-            setState(() => _selectedCategory = cat['label'] as String);
+            setState(() => _selectedCategory = cat.label);
           },
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
@@ -390,7 +358,7 @@ class _EditHabitScreenState extends State<EditHabitScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(
-                  cat['icon'] as IconData,
+                  cat.icon,
                   color: isSelected
                       ? color
                       : theme.colorScheme.onSurfaceVariant,
@@ -398,7 +366,7 @@ class _EditHabitScreenState extends State<EditHabitScreen> {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  cat['label'] as String,
+                  cat.label,
                   style: GoogleFonts.dmSans(
                     fontSize: 10,
                     fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
@@ -421,11 +389,11 @@ class _EditHabitScreenState extends State<EditHabitScreen> {
   Widget _buildFrequencyList(ThemeData theme) {
     return Column(
       children: _frequencies.map((freq) {
-        final isSelected = _selectedFrequency == freq['label'];
+        final isSelected = _selectedFrequency == freq.label;
         return GestureDetector(
           onTap: () {
             HapticUtil.selectionClick();
-            setState(() => _selectedFrequency = freq['label'] as String);
+            setState(() => _selectedFrequency = freq.label);
           },
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
@@ -456,7 +424,7 @@ class _EditHabitScreenState extends State<EditHabitScreen> {
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(
-                    freq['icon'] as IconData,
+                    freq.icon,
                     size: 18,
                     color: isSelected
                         ? theme.colorScheme.primary
@@ -469,7 +437,7 @@ class _EditHabitScreenState extends State<EditHabitScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        freq['label'] as String,
+                        freq.label,
                         style: GoogleFonts.dmSans(
                           fontSize: 15,
                           fontWeight: isSelected
@@ -481,7 +449,7 @@ class _EditHabitScreenState extends State<EditHabitScreen> {
                         ),
                       ),
                       Text(
-                        freq['desc'] as String,
+                        freq.description,
                         style: GoogleFonts.dmSans(
                           fontSize: 12,
                           color: theme.colorScheme.onSurfaceVariant,

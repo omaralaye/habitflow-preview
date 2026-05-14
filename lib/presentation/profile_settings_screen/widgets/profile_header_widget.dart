@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../../../core/app_export.dart';
 
@@ -90,6 +89,22 @@ class ProfileHeaderWidget extends StatelessWidget {
               color: theme.colorScheme.onSurface,
             ),
           ),
+
+          const SizedBox(height: 4),
+
+          // Email / logged-in indicator
+          if (userData["email"] != null && (userData["email"] as String).isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Text(
+                userData["email"] as String,
+                style: GoogleFonts.dmSans(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w400,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
 
           const SizedBox(height: 6),
 

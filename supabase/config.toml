@@ -1,0 +1,34 @@
+[auth]
+enabled = true
+
+[edge_runtime]
+enabled = true
+policy = "per_worker"
+
+[functions]
+enabled = true
+
+[functions.stripe-create-checkout]
+enabled = true
+verify_jwt = true
+
+[functions.stripe-webhook]
+enabled = true
+verify_jwt = false
+
+[functions.stripe-portal]
+enabled = true
+verify_jwt = true
+
+[integrations]
+vercel = false
+
+[api]
+enabled = true
+port = 54321
+
+[analytics]
+enabled = false
+
+[experimental]
+orioledb_version = ""

@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:sizer/sizer.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 
 import '../../../core/app_export.dart';
-import '../../../widgets/custom_icon_widget.dart';
 
 /// Search bar widget with voice input capability
 class SearchBarWidget extends StatefulWidget {

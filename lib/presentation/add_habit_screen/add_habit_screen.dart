@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import '../../core/app_settings.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:sizer/sizer.dart';
+
+import '../../core/app_settings.dart';
+import '../../data/repositories/habit_repository.dart';
+import '../../data/models/category.dart';
+import '../../services/subscription_service.dart';
+import '../../routes/app_routes.dart';
 
 /// Add Custom Habit Screen
 class AddHabitScreen extends StatefulWidget {
@@ -13,53 +17,24 @@ class AddHabitScreen extends StatefulWidget {
 }
 
 class _AddHabitScreenState extends State<AddHabitScreen> {
+  final HabitRepository _habitRepository = HabitRepository();
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
+
+  late final List<HabitCategory> _categories;
+  late final List<FrequencyOption> _frequencies;
 
   String _selectedCategory = 'Health';
   String _selectedFrequency = 'Daily';
   TimeOfDay _reminderTime = const TimeOfDay(hour: 8, minute: 0);
   bool _reminderEnabled = true;
 
-  final List<Map<String, dynamic>> _categories = [
-    {'label': 'Health', 'icon': Icons.favorite_rounded, 'color': 0xFFFF6B6B},
-    {
-      'label': 'Fitness',
-      'icon': Icons.fitness_center_rounded,
-      'color': 0xFF00C896
-    },
-    {
-      'label': 'Mindfulness',
-      'icon': Icons.self_improvement_rounded,
-      'color': 0xFF7C3AED
-    },
-    {'label': 'Learning', 'icon': Icons.menu_book_rounded, 'color': 0xFFED8936},
-    {
-      'label': 'Productivity',
-      'icon': Icons.rocket_launch_rounded,
-      'color': 0xFF0EA5E9
-    },
-    {'label': 'Social', 'icon': Icons.people_rounded, 'color': 0xFFEC4899},
-    {'label': 'Finance', 'icon': Icons.savings_rounded, 'color': 0xFF38A169},
-    {'label': 'Other', 'icon': Icons.category_rounded, 'color': 0xFF64748B},
-  ];
-
-  final List<Map<String, dynamic>> _frequencies = [
-    {'label': 'Daily', 'icon': Icons.today_rounded, 'desc': 'Every day'},
-    {'label': 'Weekdays', 'icon': Icons.work_rounded, 'desc': 'Mon – Fri'},
-    {'label': 'Weekends', 'icon': Icons.weekend_rounded, 'desc': 'Sat & Sun'},
-    {
-      'label': 'Weekly',
-      'icon': Icons.date_range_rounded,
-      'desc': 'Once a week'
-    },
-    {
-      'label': '3x / Week',
-      'icon': Icons.repeat_rounded,
-      'desc': '3 times a week'
-    },
-    {'label': 'Custom', 'icon': Icons.tune_rounded, 'desc': 'Choose days'},
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _categories = _habitRepository.formCategories;
+    _frequencies = _habitRepository.frequencies;
+  }
 
   @override
   void dispose() {
@@ -93,9 +68,40 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
     }
   }
 
-  void _saveHabit() {
+  Future<void> _saveHabit() async {
     if (!_formKey.currentState!.validate()) return;
     HapticUtil.mediumImpact();
+
+    final currentCount = _habitRepository.getMyHabits().length;
+    final canAdd = await SubscriptionService().canAddHabit(currentCount: currentCount);
+    if (!canAdd && mounted) {
+      final upgrade = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Habit Limit Reached'),
+          content: Text(
+            'You\'ve reached the free limit of ${SubscriptionService.freeMaxHabits} habits. '
+            'Upgrade to Premium to add unlimited habits.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Upgrade', style: TextStyle(color: Colors.blue)),
+            ),
+          ],
+        ),
+      );
+
+      if (upgrade == true && mounted) {
+        Navigator.pop(context);
+        Navigator.pushNamed(context, AppRoutes.paywallScreen);
+      }
+      return;
+    }
 
     final habitData = {
       'name': _nameController.text.trim(),
@@ -105,7 +111,9 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
       'reminderTime': _reminderEnabled ? _reminderTime.format(context) : null,
     };
 
-    Navigator.pop(context, habitData);
+    if (mounted) {
+      Navigator.pop(context, habitData);
+    }
   }
 
   String _formatTime(TimeOfDay time) {
@@ -287,13 +295,13 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
       itemCount: _categories.length,
       itemBuilder: (context, index) {
         final cat = _categories[index];
-        final isSelected = _selectedCategory == cat['label'];
-        final color = Color(cat['color'] as int);
+        final isSelected = _selectedCategory == cat.label;
+        final color = cat.color;
 
         return GestureDetector(
           onTap: () {
             HapticUtil.selectionClick();
-            setState(() => _selectedCategory = cat['label'] as String);
+            setState(() => _selectedCategory = cat.label);
           },
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
@@ -322,14 +330,14 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(
-                  cat['icon'] as IconData,
+                  cat.icon,
                   color:
                       isSelected ? color : theme.colorScheme.onSurfaceVariant,
                   size: 22,
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  cat['label'] as String,
+                  cat.label,
                   style: GoogleFonts.dmSans(
                     fontSize: 10,
                     fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
@@ -351,11 +359,11 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
   Widget _buildFrequencyList(ThemeData theme) {
     return Column(
       children: _frequencies.map((freq) {
-        final isSelected = _selectedFrequency == freq['label'];
+        final isSelected = _selectedFrequency == freq.label;
         return GestureDetector(
           onTap: () {
             HapticUtil.selectionClick();
-            setState(() => _selectedFrequency = freq['label'] as String);
+            setState(() => _selectedFrequency = freq.label);
           },
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
@@ -385,7 +393,7 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(
-                    freq['icon'] as IconData,
+                    freq.icon,
                     size: 18,
                     color: isSelected
                         ? theme.colorScheme.primary
@@ -398,7 +406,7 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        freq['label'] as String,
+                        freq.label,
                         style: GoogleFonts.dmSans(
                           fontSize: 15,
                           fontWeight:
@@ -409,7 +417,7 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
                         ),
                       ),
                       Text(
-                        freq['desc'] as String,
+                        freq.description,
                         style: GoogleFonts.dmSans(
                           fontSize: 12,
                           color: theme.colorScheme.onSurfaceVariant,

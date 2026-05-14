@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import '../../core/app_settings.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../core/app_settings.dart';
+import '../../data/repositories/onboarding_repository.dart';
+import '../../data/models/onboarding.dart';
 import '../../routes/app_routes.dart';
 
 class OnboardingFlow extends StatefulWidget {
@@ -14,6 +15,7 @@ class OnboardingFlow extends StatefulWidget {
 }
 
 class _OnboardingFlowState extends State<OnboardingFlow> {
+  final OnboardingRepository _onboardingRepository = OnboardingRepository();
   final PageController _pageController = PageController();
   int _currentPage = 0;
 
@@ -21,88 +23,19 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   String? _selectedReminderTime;
   final List<String> _selectedHabitAreas = [];
 
-  final List<Map<String, dynamic>> _onboardingPages = [
-    {
-      'icon': Icons.track_changes_rounded,
-      'title': 'Build Better Habits',
-      'subtitle':
-          'Track your daily habits and build streaks that keep you motivated every single day.',
-      'color': 0xFF00C896,
-    },
-    {
-      'icon': Icons.bar_chart_rounded,
-      'title': 'Visualize Progress',
-      'subtitle':
-          'See your growth with beautiful charts, streak calendars, and detailed statistics.',
-      'color': 0xFF7C3AED,
-    },
-    {
-      'icon': Icons.emoji_events_rounded,
-      'title': 'Earn Achievements',
-      'subtitle':
-          'Stay motivated with streaks, badges, and milestones as you build lasting habits.',
-      'color': 0xFFED8936,
-    },
-  ];
+  late final List<OnboardingPage> _onboardingPages;
+  late final List<GoalOption> _goalOptions;
+  late final List<HabitArea> _habitAreas;
+  late final List<String> _reminderTimes;
 
-  final List<Map<String, dynamic>> _goalOptions = [
-    {
-      'id': 'health',
-      'label': 'Health & Wellness',
-      'icon': Icons.favorite_rounded,
-    },
-    {'id': 'productivity', 'label': 'Productivity', 'icon': Icons.bolt_rounded},
-    {
-      'id': 'mindfulness',
-      'label': 'Mindfulness',
-      'icon': Icons.self_improvement_rounded,
-    },
-    {'id': 'fitness', 'label': 'Fitness', 'icon': Icons.fitness_center_rounded},
-    {'id': 'learning', 'label': 'Learning', 'icon': Icons.menu_book_rounded},
-    {
-      'id': 'social',
-      'label': 'Social & Relationships',
-      'icon': Icons.people_rounded,
-    },
-  ];
-
-  final List<Map<String, dynamic>> _habitAreas = [
-    {
-      'id': 'morning',
-      'label': 'Morning Routine',
-      'icon': Icons.wb_sunny_rounded,
-    },
-    {
-      'id': 'exercise',
-      'label': 'Exercise',
-      'icon': Icons.directions_run_rounded,
-    },
-    {'id': 'nutrition', 'label': 'Nutrition', 'icon': Icons.restaurant_rounded},
-    {'id': 'reading', 'label': 'Reading', 'icon': Icons.menu_book_rounded},
-    {
-      'id': 'meditation',
-      'label': 'Meditation',
-      'icon': Icons.self_improvement_rounded,
-    },
-    {'id': 'sleep', 'label': 'Sleep', 'icon': Icons.bedtime_rounded},
-    {'id': 'hydration', 'label': 'Hydration', 'icon': Icons.water_drop_rounded},
-    {
-      'id': 'journaling',
-      'label': 'Journaling',
-      'icon': Icons.edit_note_rounded,
-    },
-  ];
-
-  final List<String> _reminderTimes = [
-    '6:00 AM',
-    '7:00 AM',
-    '8:00 AM',
-    '9:00 AM',
-    '12:00 PM',
-    '6:00 PM',
-    '8:00 PM',
-    '10:00 PM',
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _onboardingPages = _onboardingRepository.getPages();
+    _goalOptions = _onboardingRepository.getGoalOptions();
+    _habitAreas = _onboardingRepository.getHabitAreas();
+    _reminderTimes = _onboardingRepository.getReminderTimes();
+  }
 
   @override
   void dispose() {
@@ -249,7 +182,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
 
   Widget _buildIntroPage(int index) {
     final page = _onboardingPages[index];
-    final color = Color(page['color'] as int);
+    final color = page.color;
 
     return Padding(
       padding: const EdgeInsets.all(32),
@@ -263,11 +196,11 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
               color: color.withValues(alpha: 0.12),
               shape: BoxShape.circle,
             ),
-            child: Icon(page['icon'] as IconData, size: 72, color: color),
+            child: Icon(page.icon, size: 72, color: color),
           ),
           const SizedBox(height: 40),
           Text(
-            page['title'] as String,
+            page.title,
             textAlign: TextAlign.center,
             style: GoogleFonts.dmSans(
               fontSize: 28,
@@ -278,7 +211,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
           ),
           const SizedBox(height: 16),
           Text(
-            page['subtitle'] as String,
+            page.subtitle,
             textAlign: TextAlign.center,
             style: GoogleFonts.dmSans(
               fontSize: 16,
@@ -328,11 +261,11 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
             itemCount: _goalOptions.length,
             itemBuilder: (context, index) {
               final option = _goalOptions[index];
-              final isSelected = _selectedGoal == option['id'];
+              final isSelected = _selectedGoal == option.id;
               return GestureDetector(
                 onTap: () {
                   HapticUtil.lightImpact();
-                  setState(() => _selectedGoal = option['id'] as String);
+                  setState(() => _selectedGoal = option.id);
                 },
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
@@ -352,7 +285,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(
-                        option['icon'] as IconData,
+                        option.icon,
                         color: isSelected
                             ? theme.colorScheme.primary
                             : theme.colorScheme.onSurfaceVariant,
@@ -360,7 +293,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        option['label'] as String,
+                        option.label,
                         textAlign: TextAlign.center,
                         style: GoogleFonts.dmSans(
                           fontSize: 13,
@@ -411,15 +344,15 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
             spacing: 10,
             runSpacing: 10,
             children: _habitAreas.map((area) {
-              final isSelected = _selectedHabitAreas.contains(area['id']);
+              final isSelected = _selectedHabitAreas.contains(area.id);
               return GestureDetector(
                 onTap: () {
                   HapticUtil.lightImpact();
                   setState(() {
                     if (isSelected) {
-                      _selectedHabitAreas.remove(area['id']);
+                      _selectedHabitAreas.remove(area.id);
                     } else {
-                      _selectedHabitAreas.add(area['id'] as String);
+                      _selectedHabitAreas.add(area.id);
                     }
                   });
                 },
@@ -445,7 +378,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
-                        area['icon'] as IconData,
+                        area.icon,
                         size: 18,
                         color: isSelected
                             ? theme.colorScheme.primary
@@ -453,7 +386,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        area['label'] as String,
+                        area.label,
                         style: GoogleFonts.dmSans(
                           fontSize: 14,
                           fontWeight: isSelected

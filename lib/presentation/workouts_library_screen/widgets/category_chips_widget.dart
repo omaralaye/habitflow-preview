@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../../../core/app_settings.dart';
 import 'package:sizer/sizer.dart';
 

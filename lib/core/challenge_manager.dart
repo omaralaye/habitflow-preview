@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../data/repositories/habit_repository.dart';
 
 class ChallengeManager {
   ChallengeManager._();
@@ -32,6 +33,17 @@ class ChallengeManager {
       _activeChallenges =
           List<Map<String, dynamic>>.from(jsonDecode(data) as List);
     }
+    for (final c in _activeChallenges) {
+      final repo = HabitRepository();
+      if (!repo.hasChallengeHabit(c['id'] as int)) {
+        repo.addChallengeHabit(
+          c['title'] as String,
+          IconData(c['icon'] as int, fontFamily: 'MaterialIcons'),
+          c['color'] as int,
+          c['id'] as int,
+        );
+      }
+    }
     _notify();
   }
 
@@ -53,10 +65,16 @@ class ChallengeManager {
       'completedDays': <String>[],
       'joinedDate':
           '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}',
-      'dailyTask': _defaultTaskFor(challenge['title'] as String),
+      'dailyTask': '',
       'participants': challenge['participants'],
     };
     _activeChallenges.add(active);
+    HabitRepository().addChallengeHabit(
+      challenge['title'] as String,
+      challenge['icon'] as IconData,
+      challenge['color'] as int,
+      challenge['id'] as int,
+    );
     await _save();
     _notify();
   }
@@ -86,6 +104,7 @@ class ChallengeManager {
 
   static Future<void> leaveChallenge(int challengeId) async {
     _activeChallenges.removeWhere((c) => c['id'] == challengeId);
+    HabitRepository().removeChallengeHabit(challengeId);
     await _save();
     _notify();
   }
@@ -104,15 +123,5 @@ class ChallengeManager {
     return match != null ? int.parse(match.group(1)!) : 30;
   }
 
-  static String _defaultTaskFor(String title) {
-    final tasks = {
-      '21-Day No Sugar Challenge': 'Avoid all added sugars today',
-      '7-Day Reading Sprint': 'Read at least 30 pages',
-      '14-Day Morning Routine': 'Wake up at 6 AM and complete your routine',
-      '30-Day Fitness Streak': 'Exercise for at least 20 minutes',
-      '10-Day Digital Detox': 'Limit social media to 30 minutes',
-      '5-Day Gratitude Practice': 'Write 5 things you\'re grateful for',
-    };
-    return tasks[title] ?? 'Complete today\'s challenge task';
-  }
+
 }

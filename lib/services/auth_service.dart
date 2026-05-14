@@ -43,6 +43,11 @@ class AuthService {
     return getCurrentUser() != null;
   }
 
+  Future<void> resetPassword(String email) async {
+    HapticUtil.lightImpact();
+    await _client.auth.resetPasswordForEmail(email);
+  }
+
   StreamSubscription<AuthState> onAuthChange(void Function(AuthState) cb) {
     return _client.auth.onAuthStateChange.listen(cb);
   }

@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import '../../core/app_settings.dart';
 import 'package:google_fonts/google_fonts.dart';
+
+import '../../core/app_settings.dart';
+import '../../data/repositories/habit_repository.dart';
+import '../../data/models/habit.dart';
+import '../../data/models/user_subscription.dart';
+import '../../services/subscription_service.dart';
+import '../../routes/app_routes.dart';
 
 /// Habits Library Screen - Browse and manage all habits
 class WorkoutsLibraryScreen extends StatefulWidget {
@@ -13,6 +18,7 @@ class WorkoutsLibraryScreen extends StatefulWidget {
 
 class _WorkoutsLibraryScreenState extends State<WorkoutsLibraryScreen>
     with SingleTickerProviderStateMixin {
+  final HabitRepository _habitRepository = HabitRepository();
   late TabController _tabController;
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
@@ -20,206 +26,26 @@ class _WorkoutsLibraryScreenState extends State<WorkoutsLibraryScreen>
   String _filterDifficulty = 'All';
   String _sortBy = 'Popularity';
 
-  final List<String> _categories = [
-    'All',
-    'Health',
-    'Fitness',
-    'Mindfulness',
-    'Learning',
-    'Productivity',
-    'Sleep',
-  ];
+  late final List<String> _categories;
 
-  final List<Map<String, dynamic>> _allHabits = [
-    {
-      'id': 1,
-      'title': 'Morning Meditation',
-      'description':
-          'Start your day with 10 minutes of mindful breathing and clarity.',
-      'icon': Icons.self_improvement_rounded,
-      'color': 0xFF7C3AED,
-      'category': 'Mindfulness',
-      'duration': '10 min',
-      'difficulty': 'Easy',
-      'popularity': 4.9,
-      'users': '125K',
-      'isAdded': true,
-    },
-    {
-      'id': 2,
-      'title': 'Drink 8 Glasses of Water',
-      'description':
-          'Stay hydrated throughout the day for better energy and focus.',
-      'icon': Icons.water_drop_rounded,
-      'color': 0xFF0EA5E9,
-      'category': 'Health',
-      'duration': 'All day',
-      'difficulty': 'Easy',
-      'popularity': 4.8,
-      'users': '210K',
-      'isAdded': true,
-    },
-    {
-      'id': 3,
-      'title': 'Read 20 Pages',
-      'description':
-          'Build a reading habit to expand your knowledge every day.',
-      'icon': Icons.menu_book_rounded,
-      'color': 0xFFED8936,
-      'category': 'Learning',
-      'duration': '20 min',
-      'difficulty': 'Easy',
-      'popularity': 4.7,
-      'users': '98K',
-      'isAdded': true,
-    },
-    {
-      'id': 4,
-      'title': 'Evening Walk',
-      'description':
-          'A 30-minute walk to unwind and improve cardiovascular health.',
-      'icon': Icons.directions_walk_rounded,
-      'color': 0xFF00C896,
-      'category': 'Fitness',
-      'duration': '30 min',
-      'difficulty': 'Easy',
-      'popularity': 4.6,
-      'users': '87K',
-      'isAdded': true,
-    },
-    {
-      'id': 5,
-      'title': 'Gratitude Journal',
-      'description': 'Write 3 things you\'re grateful for to boost positivity.',
-      'icon': Icons.edit_note_rounded,
-      'color': 0xFFEC4899,
-      'category': 'Mindfulness',
-      'duration': '5 min',
-      'difficulty': 'Easy',
-      'popularity': 4.8,
-      'users': '156K',
-      'isAdded': true,
-    },
-    {
-      'id': 6,
-      'title': '7-Minute Workout',
-      'description':
-          'High-intensity circuit training for a quick daily fitness boost.',
-      'icon': Icons.fitness_center_rounded,
-      'color': 0xFFFF6B35,
-      'category': 'Fitness',
-      'duration': '7 min',
-      'difficulty': 'Medium',
-      'popularity': 4.5,
-      'users': '73K',
-      'isAdded': false,
-    },
-    {
-      'id': 7,
-      'title': 'No Phone First Hour',
-      'description': 'Avoid screens for the first hour after waking up.',
-      'icon': Icons.phone_disabled_rounded,
-      'color': 0xFF64748B,
-      'category': 'Productivity',
-      'duration': '1 hour',
-      'difficulty': 'Hard',
-      'popularity': 4.4,
-      'users': 'New',
-      'isAdded': false,
-    },
-    {
-      'id': 8,
-      'title': 'Cold Shower',
-      'description':
-          'Build mental toughness and boost alertness with cold water.',
-      'icon': Icons.shower_rounded,
-      'color': 0xFF0EA5E9,
-      'category': 'Health',
-      'duration': '5 min',
-      'difficulty': 'Hard',
-      'popularity': 4.3,
-      'users': '45K',
-      'isAdded': false,
-    },
-    {
-      'id': 9,
-      'title': 'Sleep by 10 PM',
-      'description':
-          'Maintain a consistent sleep schedule for better recovery.',
-      'icon': Icons.bedtime_rounded,
-      'color': 0xFF6366F1,
-      'category': 'Sleep',
-      'duration': 'Evening',
-      'difficulty': 'Medium',
-      'popularity': 4.6,
-      'users': '112K',
-      'isAdded': false,
-    },
-    {
-      'id': 10,
-      'title': 'Learn a New Word',
-      'description': 'Expand your vocabulary by learning one new word daily.',
-      'icon': Icons.translate_rounded,
-      'color': 0xFFED8936,
-      'category': 'Learning',
-      'duration': '5 min',
-      'difficulty': 'Easy',
-      'popularity': 4.2,
-      'users': '34K',
-      'isAdded': false,
-    },
-    {
-      'id': 11,
-      'title': 'Deep Work Session',
-      'description':
-          '90 minutes of focused, distraction-free work on important tasks.',
-      'icon': Icons.psychology_rounded,
-      'color': 0xFF7C3AED,
-      'category': 'Productivity',
-      'duration': '90 min',
-      'difficulty': 'Hard',
-      'popularity': 4.7,
-      'users': '67K',
-      'isAdded': false,
-    },
-    {
-      'id': 12,
-      'title': 'Stretching Routine',
-      'description':
-          'Daily stretching to improve flexibility and reduce tension.',
-      'icon': Icons.accessibility_new_rounded,
-      'color': 0xFF00C896,
-      'category': 'Fitness',
-      'duration': '15 min',
-      'difficulty': 'Easy',
-      'popularity': 4.5,
-      'users': '89K',
-      'isAdded': false,
-    },
-  ];
+  List<Habit> get _allHabits => _habitRepository.getAllHabits();
 
-  List<Map<String, dynamic>> get _filteredHabits {
-    return _allHabits.where((habit) {
-      final matchesSearch =
-          _searchQuery.isEmpty ||
-          (habit['title'] as String).toLowerCase().contains(
-            _searchQuery.toLowerCase(),
-          );
-      final matchesCategory =
-          _selectedCategory == 'All' || habit['category'] == _selectedCategory;
-      final matchesDifficulty =
-          _filterDifficulty == 'All' || habit['difficulty'] == _filterDifficulty;
-      return matchesSearch && matchesCategory && matchesDifficulty;
-    }).toList();
+  List<Habit> get _filteredHabits {
+    return _habitRepository.filteredHabits(
+      query: _searchQuery,
+      category: _selectedCategory,
+      difficulty: _filterDifficulty,
+    );
   }
 
-  List<Map<String, dynamic>> get _myHabits =>
-      _allHabits.where((h) => h['isAdded'] == true).toList();
+  List<Habit> get _myHabits =>
+      _habitRepository.getMyHabits();
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _categories = _habitRepository.categories;
   }
 
   @override
@@ -324,12 +150,8 @@ class _WorkoutsLibraryScreenState extends State<WorkoutsLibraryScreen>
 
   void _toggleHabit(int id) {
     HapticUtil.lightImpact();
-    setState(() {
-      final index = _allHabits.indexWhere((h) => h['id'] == id);
-      if (index != -1) {
-        _allHabits[index]['isAdded'] = !(_allHabits[index]['isAdded'] as bool);
-      }
-    });
+    _habitRepository.toggleAdded(id);
+    setState(() {});
   }
 
   @override
@@ -384,44 +206,151 @@ class _WorkoutsLibraryScreenState extends State<WorkoutsLibraryScreen>
 
   Widget _buildMyHabitsTab(ThemeData theme) {
     if (_myHabits.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.checklist_rounded,
-              size: 64,
-              color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'No habits yet',
-              style: GoogleFonts.dmSans(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: theme.colorScheme.onSurfaceVariant,
+      return Column(
+        children: [
+          _buildHabitLimitBar(theme),
+          Expanded(
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.checklist_rounded,
+                    size: 64,
+                    color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'No habits yet',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Discover habits to add to your routine',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 14,
+                      color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 8),
-            Text(
-              'Discover habits to add to your routine',
-              style: GoogleFonts.dmSans(
-                fontSize: 14,
-                color: theme.colorScheme.onSurfaceVariant.withValues(
-                  alpha: 0.7,
-                ),
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       );
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: _myHabits.length,
-      itemBuilder: (context, index) {
-        return _buildHabitListCard(theme, _myHabits[index], showRemove: true);
+    return Column(
+      children: [
+        _buildHabitLimitBar(theme),
+        Expanded(
+          child: ListView.builder(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+            itemCount: _myHabits.length,
+            itemBuilder: (context, index) {
+              return _buildHabitListCard(theme, _myHabits[index], showRemove: true);
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHabitLimitBar(ThemeData theme) {
+    return FutureBuilder<UserSubscription>(
+      future: SubscriptionService().getSubscription(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) return const SizedBox.shrink();
+
+        final sub = snapshot.data!;
+        if (sub.isPremium) return const SizedBox.shrink();
+
+        final count = _myHabits.length;
+        final limit = SubscriptionService.freeMaxHabits;
+        final ratio = count / limit;
+        final isNearLimit = count >= limit - 1;
+        final isAtLimit = count >= limit;
+
+        if (count == 0) return const SizedBox.shrink();
+
+        return GestureDetector(
+          onTap: () => Navigator.pushNamed(context, AppRoutes.paywallScreen),
+          child: Container(
+            margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: isAtLimit
+                  ? theme.colorScheme.error.withValues(alpha: 0.1)
+                  : isNearLimit
+                      ? Colors.orange.withValues(alpha: 0.1)
+                      : theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  isAtLimit ? Icons.block_rounded : Icons.info_outline_rounded,
+                  size: 16,
+                  color: isAtLimit
+                      ? theme.colorScheme.error
+                      : isNearLimit
+                          ? Colors.orange
+                          : theme.colorScheme.primary,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    isAtLimit
+                        ? 'Habit limit reached. Upgrade for unlimited.'
+                        : '$count of $limit habits used',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: isAtLimit
+                          ? theme.colorScheme.error
+                          : isNearLimit
+                              ? Colors.orange.shade800
+                              : theme.colorScheme.onSurface,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  width: 60,
+                  height: 6,
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                  child: FractionallySizedBox(
+                    alignment: Alignment.centerLeft,
+                    widthFactor: ratio.clamp(0.0, 1.0),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: isAtLimit
+                            ? theme.colorScheme.error
+                            : isNearLimit
+                                ? Colors.orange
+                                : theme.colorScheme.primary,
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  size: 16,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ],
+            ),
+          ),
+        );
       },
     );
   }
@@ -540,11 +469,11 @@ class _WorkoutsLibraryScreenState extends State<WorkoutsLibraryScreen>
 
   Widget _buildHabitListCard(
     ThemeData theme,
-    Map<String, dynamic> habit, {
+    Habit habit, {
     required bool showRemove,
   }) {
-    final color = Color(habit['color'] as int);
-    final isAdded = habit['isAdded'] as bool;
+    final color = habit.color;
+    final isAdded = habit.isAdded;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -572,7 +501,7 @@ class _WorkoutsLibraryScreenState extends State<WorkoutsLibraryScreen>
               color: color.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(14),
             ),
-            child: Icon(habit['icon'] as IconData, color: color, size: 26),
+            child: Icon(habit.icon, color: color, size: 26),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -580,7 +509,7 @@ class _WorkoutsLibraryScreenState extends State<WorkoutsLibraryScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  habit['title'] as String,
+                  habit.title,
                   style: GoogleFonts.dmSans(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
@@ -590,7 +519,7 @@ class _WorkoutsLibraryScreenState extends State<WorkoutsLibraryScreen>
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  habit['description'] as String,
+                  habit.description,
                   style: GoogleFonts.dmSans(
                     fontSize: 12,
                     color: theme.colorScheme.onSurfaceVariant,
@@ -603,19 +532,19 @@ class _WorkoutsLibraryScreenState extends State<WorkoutsLibraryScreen>
                   children: [
                     _buildChip(
                       theme,
-                      habit['duration'] as String,
+                      habit.duration,
                       Icons.access_time_rounded,
                     ),
                     const SizedBox(width: 8),
                     _buildChip(
                       theme,
-                      habit['difficulty'] as String,
+                      habit.difficulty,
                       Icons.bar_chart_rounded,
                     ),
                     const SizedBox(width: 8),
                     _buildChip(
                       theme,
-                      '${habit['users']} users',
+                      '${habit.users} users',
                       Icons.people_rounded,
                     ),
                   ],
@@ -625,7 +554,7 @@ class _WorkoutsLibraryScreenState extends State<WorkoutsLibraryScreen>
           ),
           const SizedBox(width: 10),
           GestureDetector(
-            onTap: () => _toggleHabit(habit['id'] as int),
+            onTap: () => _toggleHabit(habit.id),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               width: 36,

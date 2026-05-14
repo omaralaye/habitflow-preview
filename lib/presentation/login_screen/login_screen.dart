@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/app_export.dart';
@@ -76,10 +75,6 @@ class _LoginScreenState extends State<LoginScreen> {
         _emailController.text.trim(),
         _passwordController.text,
       );
-
-      if (mounted) {
-        _navigateAfterAuth();
-      }
     } on AuthException catch (e) {
       setState(() {
         _errorMessage = e.message;
@@ -95,6 +90,61 @@ class _LoginScreenState extends State<LoginScreen> {
         });
       }
     }
+  }
+
+  Future<void> _showForgotPasswordDialog(BuildContext ctx) async {
+    final emailController = TextEditingController(text: _emailController.text.trim());
+
+    final email = await showDialog<String>(
+      context: ctx,
+      builder: (context) => AlertDialog(
+        title: const Text('Reset Password'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Enter your email address and we\'ll send you a password reset link.'),
+            const SizedBox(height: 16),
+            TextField(
+              controller: emailController,
+              keyboardType: TextInputType.emailAddress,
+              decoration: const InputDecoration(
+                labelText: 'Email',
+                hintText: 'Enter your email',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, emailController.text.trim()),
+            child: const Text('Send Reset Link'),
+          ),
+        ],
+      ),
+    );
+
+    if (email != null && email.isNotEmpty) {
+      try {
+        await _authService.resetPassword(email);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Password reset link sent to your email')),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to send reset email: $e')),
+          );
+        }
+      }
+    }
+
+    emailController.dispose();
   }
 
   Future<void> _handleGoogleSignIn() async {
@@ -256,6 +306,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: TextButton(
                     onPressed: () {
                       HapticUtil.lightImpact();
+                      _showForgotPasswordDialog(context);
                     },
                     child: Text(
                       'Forgot password?',

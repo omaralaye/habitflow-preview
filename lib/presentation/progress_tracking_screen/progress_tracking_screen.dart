@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import '../../core/app_settings.dart';
 import 'package:sizer/sizer.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:share_plus/share_plus.dart';
+
+import '../../core/app_export.dart';
+import '../../data/repositories/progress_repository.dart';
+import '../../data/models/progress_stats.dart';
 
 /// Progress Tracking Screen - Habit statistics and analytics
 class ProgressTrackingScreen extends StatefulWidget {
@@ -15,54 +17,34 @@ class ProgressTrackingScreen extends StatefulWidget {
 }
 
 class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
+  final ProgressRepository _progressRepository = ProgressRepository();
   String _selectedPeriod = 'Weekly';
 
-  final Map<String, dynamic> _overallStats = {
-    'currentStreak': 14,
-    'longestStreak': 21,
-    'totalCompleted': 287,
-    'completionRate': 0.78,
-    'activeHabits': 6,
-    'perfectDays': 12,
-  };
+  static const _fullMonths = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
-  final List<Map<String, dynamic>> _weeklyData = [
-{'label': 'Mon', 'value': 5.0, 'total': 6.0},
-{'label': 'Tue', 'value': 6.0, 'total': 6.0},
-{'label': 'Wed', 'value': 4.0, 'total': 6.0},
-{'label': 'Thu', 'value': 3.0, 'total': 6.0},
-{'label': 'Fri', 'value': 6.0, 'total': 6.0},
-{'label': 'Sat', 'value': 5.0, 'total': 6.0},
-{'label': 'Sun', 'value': 2.0, 'total': 6.0},
-];
+  OverallStats? _overallStats;
+  List<WeeklyDataPoint> _weeklyData = [];
+  List<MonthlyDataPoint> _monthlyData = [];
+  List<HabitBreakdown> _habitBreakdown = [];
+  Map<int, double> _calendarData = {};
 
-  final List<Map<String, dynamic>> _monthlyData = [
-{'label': 'W1', 'value': 4.2},
-{'label': 'W2', 'value': 5.1},
-{'label': 'W3', 'value': 3.8},
-{'label': 'W4', 'value': 5.6},
-];
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
 
-  final List<Map<String, dynamic>> _habitBreakdown = [
-{'name': 'Morning Meditation', 'icon': Icons.self_improvement_rounded, 'color': 0xFF7C3AED, 'rate': 0.93, 'streak': 14},
-{'name': 'Drink Water', 'icon': Icons.water_drop_rounded, 'color': 0xFF0EA5E9, 'rate': 0.87, 'streak': 7},
-{'name': 'Read 20 Pages', 'icon': Icons.menu_book_rounded, 'color': 0xFFED8936, 'rate': 0.71, 'streak': 5},
-{'name': 'Evening Walk', 'icon': Icons.directions_walk_rounded, 'color': 0xFF00C896, 'rate': 0.64, 'streak': 10},
-{'name': 'Gratitude Journal', 'icon': Icons.edit_note_rounded, 'color': 0xFFEC4899, 'rate': 0.57, 'streak': 3},
-{'name': 'No Phone AM', 'icon': Icons.phone_disabled_rounded, 'color': 0xFF64748B, 'rate': 0.80, 'streak': 8},
-];
+  void _loadData() {
+    setState(() {
+      _overallStats = _progressRepository.getOverallStats();
+      _weeklyData = _progressRepository.getWeeklyData();
+      _monthlyData = _progressRepository.getMonthlyData();
+      _habitBreakdown = _progressRepository.getHabitBreakdown();
+      _calendarData = _progressRepository.getCalendarData();
+    });
+  }
 
-  // Calendar data - days with completion status
-  final Map<int, double> _calendarData = {
-    1: 1.0, 2: 0.8, 3: 0.6, 4: 0.0, 5: 1.0,
-    6: 1.0, 7: 0.5, 8: 1.0, 9: 0.9, 10: 0.7,
-    11: 0.0, 12: 1.0, 13: 1.0, 14: 0.8, 15: 1.0,
-    16: 0.6, 17: 0.9, 18: 1.0, 19: 0.4, 20: 1.0,
-    21: 1.0, 22: 0.7, 23: 0.8, 24: 1.0, 25: 0.5,
-    26: 1.0, 27: 0.9, 28: 1.0, 29: 0.6, 30: 0.8,
-  };
-
-  List<Map<String, dynamic>> get _currentChartData =>
+  List<dynamic> get _currentChartData =>
       _selectedPeriod == 'Weekly' ? _weeklyData : _monthlyData;
 
   @override
@@ -88,19 +70,19 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
             onPressed: () {
               HapticUtil.lightImpact();
               final text = 'My FlowFit Progress:\n'
-                  '🔥 Current Streak: ${_overallStats['currentStreak']} days\n'
-                  '🏆 Best Streak: ${_overallStats['longestStreak']} days\n'
-                  '✅ Total Completed: ${_overallStats['totalCompleted']}\n'
-                  '⭐ Completion Rate: ${((_overallStats['completionRate'] as double) * 100).toInt()}%\n'
-                  '📊 Active Habits: ${_overallStats['activeHabits']}\n'
-                  '💯 Perfect Days: ${_overallStats['perfectDays']}';
+                  '🔥 Current Streak: ${_overallStats?.currentStreak ?? 0} days\n'
+                  '🏆 Best Streak: ${_overallStats?.longestStreak ?? 0} days\n'
+                  '✅ Total Completed: ${_overallStats?.totalCompleted ?? 0}\n'
+                  '⭐ Completion Rate: ${((_overallStats?.completionRate ?? 0) * 100).toInt()}%\n'
+                  '📊 Active Habits: ${_overallStats?.activeHabits ?? 0}\n'
+                  '💯 Perfect Days: ${_overallStats?.perfectDays ?? 0}';
               SharePlus.instance.share(ShareParams(text: text));
             },
           ),
         ],
       ),
       body: RefreshIndicator(
-        onRefresh: () async => await Future.delayed(const Duration(seconds: 1)),
+        onRefresh: () async => _loadData(),
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.all(16),
@@ -132,7 +114,7 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
             _buildStatCard(
               theme,
               '🔥',
-              '${_overallStats['currentStreak']}',
+              '${_overallStats?.currentStreak ?? 0}',
               'Current Streak',
               const Color(0xFFFF6B35),
             ),
@@ -140,7 +122,7 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
             _buildStatCard(
               theme,
               '🏆',
-              '${_overallStats['longestStreak']}',
+              '${_overallStats?.longestStreak ?? 0}',
               'Best Streak',
               const Color(0xFFFBBF24),
             ),
@@ -152,7 +134,7 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
             _buildStatCard(
               theme,
               '✅',
-              '${_overallStats['totalCompleted']}',
+              '${_overallStats?.totalCompleted ?? 0}',
               'Total Done',
               theme.colorScheme.primary,
             ),
@@ -160,7 +142,7 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
             _buildStatCard(
               theme,
               '⭐',
-              '${((_overallStats['completionRate'] as double) * 100).toInt()}%',
+              '${((_overallStats?.completionRate ?? 0) * 100).toInt()}%',
               'Completion Rate',
               const Color(0xFF7C3AED),
             ),
@@ -291,10 +273,19 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
                       getTitlesWidget: (value, meta) {
                         final data = _currentChartData;
                         if (value.toInt() < data.length) {
+                          final item = data[value.toInt()];
+                          String label;
+                          if (item is WeeklyDataPoint) {
+                            label = item.label;
+                          } else if (item is MonthlyDataPoint) {
+                            label = item.label;
+                          } else {
+                            label = '';
+                          }
                           return Padding(
                             padding: const EdgeInsets.only(top: 6),
                             child: Text(
-                              data[value.toInt()]['label'] as String,
+                              label,
                               style: GoogleFonts.dmSans(
                                 fontSize: 11,
                                 color: theme.colorScheme.onSurfaceVariant,
@@ -322,7 +313,14 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
                 borderData: FlBorderData(show: false),
                 barGroups: List.generate(_currentChartData.length, (index) {
                   final item = _currentChartData[index];
-                  final val = (item['value'] as num).toDouble();
+                  double val;
+                  if (item is WeeklyDataPoint) {
+                    val = item.value;
+                  } else if (item is MonthlyDataPoint) {
+                    val = item.value;
+                  } else {
+                    val = 0;
+                  }
                   return BarChartGroupData(
                     x: index,
                     barRods: [
@@ -351,10 +349,6 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
   Widget _buildCalendarHeatmap(ThemeData theme) {
     final now = DateTime.now();
     final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
-    final monthName = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December'
-    ][now.month - 1];
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -377,7 +371,7 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                '$monthName ${now.year}',
+                '${_fullMonths[now.month - 1]} ${now.year}',
                 style: GoogleFonts.dmSans(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
@@ -499,8 +493,8 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
           ),
           const SizedBox(height: 16),
           ..._habitBreakdown.map((habit) {
-            final color = Color(habit['color'] as int);
-            final rate = habit['rate'] as double;
+            final color = Color(habit.colorValue);
+            final rate = habit.rate;
             return Padding(
               padding: const EdgeInsets.only(bottom: 14),
               child: Row(
@@ -512,7 +506,7 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
                       color: color.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: Icon(habit['icon'] as IconData, color: color, size: 18),
+                    child: Icon(Icons.check_circle_rounded, color: color, size: 18),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -524,7 +518,7 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
                           children: [
                             Expanded(
                               child: Text(
-                                habit['name'] as String,
+                                habit.name,
                                 style: GoogleFonts.dmSans(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w600,
@@ -539,7 +533,7 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
                                     size: 13, color: Color(0xFFFF6B35)),
                                 const SizedBox(width: 2),
                                 Text(
-                                  '${habit['streak']}d',
+                                  '${habit.streak}d',
                                   style: GoogleFonts.dmSans(
                                     fontSize: 12,
                                     color: theme.colorScheme.onSurfaceVariant,

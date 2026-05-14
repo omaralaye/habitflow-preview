@@ -1,11 +1,11 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
-import '../../widgets/custom_icon_widget.dart';
+import '../../data/repositories/exercise_repository.dart';
+import '../../data/models/exercise.dart';
 import './widgets/breathing_guide_widget.dart';
 import './widgets/exercise_timeline_widget.dart';
 import './widgets/next_exercise_preview_widget.dart';
@@ -22,6 +22,9 @@ class WorkoutPlayerScreen extends StatefulWidget {
 }
 
 class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
+  final ExerciseRepository _exerciseRepository = ExerciseRepository();
+  late final List<Exercise> _exercises;
+
   // Workout state
   int _currentExerciseIndex = 0;
   int _currentSet = 1;
@@ -35,69 +38,10 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
   Timer? _restTimer;
   Timer? _exerciseTimer;
 
-  // Mock workout data
-  final List<Map<String, dynamic>> _exercises = [
-    {
-      "name": "Push-ups",
-      "videoUrl":
-          "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
-      "imageUrl":
-          "https://images.unsplash.com/photo-1591469933822-57c71792bbd3",
-      "semanticLabel":
-          "Man performing push-up exercise on yoga mat in bright gym",
-      "sets": 3,
-      "reps": 15,
-      "restTime": 60,
-      "instructions":
-          "Keep your body straight and lower yourself until your chest nearly touches the floor.",
-    },
-    {
-      "name": "Squats",
-      "videoUrl":
-          "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
-      "imageUrl":
-          "https://img.rocket.new/generatedImages/rocket_gen_img_17ba526e0-1764892782382.png",
-      "semanticLabel":
-          "Woman doing squat exercise with proper form in fitness studio",
-      "sets": 3,
-      "reps": 20,
-      "restTime": 60,
-      "instructions":
-          "Keep your feet shoulder-width apart and lower your hips back and down.",
-    },
-    {
-      "name": "Plank Hold",
-      "videoUrl":
-          "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
-      "imageUrl":
-          "https://img.rocket.new/generatedImages/rocket_gen_img_1b31a81d7-1764695066555.png",
-      "semanticLabel":
-          "Person holding plank position on exercise mat with straight body alignment",
-      "sets": 3,
-      "reps": 30,
-      "restTime": 45,
-      "instructions":
-          "Hold a straight line from head to heels, engaging your core.",
-    },
-    {
-      "name": "Lunges",
-      "videoUrl":
-          "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
-      "imageUrl":
-          "https://images.unsplash.com/photo-1675910518245-04081dc44b5f",
-      "semanticLabel":
-          "Athletic woman performing forward lunge exercise outdoors",
-      "sets": 3,
-      "reps": 12,
-      "restTime": 60,
-      "instructions":
-          "Step forward and lower your hips until both knees are bent at 90 degrees.",
-    },
-  ];
-
   @override
   void initState() {
     super.initState();
+    _exercises = _exerciseRepository.getExercises();
     _startExerciseTimer();
   }
 
@@ -122,7 +66,7 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
 
   void _startRestTimer() {
     final currentExercise = _exercises[_currentExerciseIndex];
-    _restTimeRemaining = currentExercise['restTime'] as int;
+    _restTimeRemaining = currentExercise.restTime;
 
     _restTimer?.cancel();
     _restTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
@@ -148,7 +92,7 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
 
   void _incrementRep() {
     final currentExercise = _exercises[_currentExerciseIndex];
-    final targetReps = currentExercise['reps'] as int;
+    final targetReps = currentExercise.reps;
 
     setState(() {
       _currentReps++;
@@ -169,7 +113,7 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
 
   void _completeSet() {
     final currentExercise = _exercises[_currentExerciseIndex];
-    final totalSets = currentExercise['sets'] as int;
+    final totalSets = currentExercise.sets;
 
     if (_currentSet >= totalSets) {
       _moveToNextExercise();
@@ -281,7 +225,6 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Celebration icon
             Container(
               width: 20.w,
               height: 20.w,
@@ -320,7 +263,6 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
 
             SizedBox(height: 3.h),
 
-            // Stats
             Container(
               padding: EdgeInsets.all(4.w),
               decoration: BoxDecoration(
@@ -469,7 +411,7 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
                           child: BreathingGuideWidget(isActive: _isResting),
                         )
                       : VideoPlayerWidget(
-                          videoUrl: currentExercise['videoUrl'] as String,
+                          videoUrl: currentExercise.videoUrl,
                         ),
                 ),
 
@@ -482,7 +424,7 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
                       children: [
                         // Exercise name
                         Text(
-                          currentExercise['name'] as String,
+                          currentExercise.name,
                           style: theme.textTheme.headlineMedium?.copyWith(
                             fontWeight: FontWeight.w700,
                           ),
@@ -509,9 +451,9 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
                         if (!_isResting)
                           RepCounterWidget(
                             currentReps: _currentReps,
-                            targetReps: currentExercise['reps'] as int,
+                            targetReps: currentExercise.reps,
                             currentSet: _currentSet,
-                            totalSets: currentExercise['sets'] as int,
+                            totalSets: currentExercise.sets,
                             onRepIncrement: _incrementRep,
                             onRepDecrement: _decrementRep,
                           ),
@@ -571,11 +513,11 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
                 left: 0,
                 right: 0,
                 child: NextExercisePreviewWidget(
-                  exerciseName: nextExercise['name'] as String,
-                  imageUrl: nextExercise['imageUrl'] as String,
-                  semanticLabel: nextExercise['semanticLabel'] as String,
-                  sets: nextExercise['sets'] as int,
-                  reps: nextExercise['reps'] as int,
+                  exerciseName: nextExercise.name,
+                  imageUrl: nextExercise.imageUrl,
+                  semanticLabel: nextExercise.semanticLabel,
+                  sets: nextExercise.sets,
+                  reps: nextExercise.reps,
                   onSkipRest: _skipRest,
                 ),
               ),

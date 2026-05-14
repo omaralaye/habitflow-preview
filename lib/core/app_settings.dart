@@ -83,15 +83,4 @@ class HapticUtil {
   }
 }
 
-const List<String> motivationalQuotesList = [
-  'Small daily improvements lead to stunning results.',
-  'You don\'t have to be extreme, just consistent.',
-  'The secret of getting ahead is getting started.',
-  'Habits are the compound interest of self-improvement.',
-  'Success is the sum of small efforts repeated day in and day out.',
-  'Every action you take is a vote for the type of person you wish to become.',
-  'Be the designer of your world and not merely the consumer of it.',
-  'Motivation gets you started. Habit keeps you going.',
-  'Your habits shape your future.',
-  'The best time to start was yesterday. The next best time is now.',
-];
+

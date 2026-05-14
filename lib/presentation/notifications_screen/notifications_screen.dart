@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import '../../core/app_settings.dart';
 import 'package:sizer/sizer.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../core/app_settings.dart';
+import '../../data/repositories/notification_repository.dart';
+import '../../data/models/notification_item.dart';
 import '../../widgets/custom_app_bar.dart';
 import '../../widgets/custom_icon_widget.dart';
 
@@ -16,99 +17,24 @@ class NotificationsScreen extends StatefulWidget {
 }
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
+  final NotificationRepository _notificationRepository = NotificationRepository();
   String _selectedFilter = 'All';
+  List<NotificationItem> _notifications = [];
 
-  final List<Map<String, dynamic>> _notifications = [
-    {
-      'id': '1',
-      'type': 'reminder',
-      'title': 'Morning Meditation',
-      'message': 'Time for your daily meditation session',
-      'time': '5 min ago',
-      'isRead': false,
-      'icon': 'self_improvement',
-      'color': 0xFF7C3AED,
-    },
-    {
-      'id': '2',
-      'type': 'achievement',
-      'title': 'Streak Milestone!',
-      'message': 'You\'ve maintained a 14-day streak! Keep going!',
-      'time': '1 hour ago',
-      'isRead': false,
-      'icon': 'local_fire_department',
-      'color': 0xFFFF6B35,
-    },
-    {
-      'id': '3',
-      'type': 'reminder',
-      'title': 'Drink Water',
-      'message': 'Stay hydrated! Log your water intake',
-      'time': '2 hours ago',
-      'isRead': true,
-      'icon': 'water_drop',
-      'color': 0xFF0EA5E9,
-    },
-    {
-      'id': '4',
-      'type': 'insight',
-      'title': 'Weekly Progress',
-      'message': 'You completed 87% of your habits this week!',
-      'time': '3 hours ago',
-      'isRead': true,
-      'icon': 'insights',
-      'color': 0xFF00C896,
-    },
-    {
-      'id': '5',
-      'type': 'reminder',
-      'title': 'Evening Walk',
-      'message': 'Don\'t forget your 30-minute evening walk',
-      'time': '4 hours ago',
-      'isRead': true,
-      'icon': 'directions_walk',
-      'color': 0xFF00C896,
-    },
-    {
-      'id': '6',
-      'type': 'achievement',
-      'title': 'Perfect Day!',
-      'message': 'You completed all habits yesterday. Amazing!',
-      'time': 'Yesterday',
-      'isRead': true,
-      'icon': 'emoji_events',
-      'color': 0xFFFBBF24,
-    },
-    {
-      'id': '7',
-      'type': 'insight',
-      'title': 'Habit Suggestion',
-      'message': 'Based on your routine, try adding "Gratitude Journal"',
-      'time': 'Yesterday',
-      'isRead': true,
-      'icon': 'lightbulb',
-      'color': 0xFFED8936,
-    },
-    {
-      'id': '8',
-      'type': 'reminder',
-      'title': 'Read 20 Pages',
-      'message': 'Your daily reading goal is waiting',
-      'time': '2 days ago',
-      'isRead': true,
-      'icon': 'menu_book',
-      'color': 0xFFED8936,
-    },
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _notifications = _notificationRepository.getNotifications();
+  }
 
-  List<Map<String, dynamic>> get _filteredNotifications {
+  List<NotificationItem> get _filteredNotifications {
     if (_selectedFilter == 'All') return _notifications;
     return _notifications
-        .where((n) => n['type'] == _selectedFilter.toLowerCase())
+        .where((n) => n.type == _selectedFilter.toLowerCase())
         .toList();
   }
 
-  int get _unreadCount => _notifications.where((n) => !n['isRead']).length;
+  int get _unreadCount => _notifications.where((n) => !n.isRead).length;
 
   @override
   Widget build(BuildContext context) {
@@ -197,11 +123,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   Widget _buildNotificationCard(
-      Map<String, dynamic> notification, ThemeData theme) {
-    final isUnread = !notification['isRead'];
+      NotificationItem notification, ThemeData theme) {
+    final isUnread = !notification.isRead;
 
     return GestureDetector(
-      onTap: () => _markAsRead(notification['id']),
+      onTap: () => _markAsRead(notification.id),
       child: Container(
         margin: EdgeInsets.only(bottom: 1.5.h),
         padding: EdgeInsets.all(3.w),
@@ -220,12 +146,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             Container(
               padding: EdgeInsets.all(2.w),
               decoration: BoxDecoration(
-                color: Color(notification['color']).withValues(alpha: 0.15),
+                color: Color(notification.colorValue).withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: CustomIconWidget(
-                iconName: notification['icon'],
-                color: Color(notification['color']),
+                iconName: notification.icon,
+                color: Color(notification.colorValue),
                 size: 22,
               ),
             ),
@@ -238,7 +164,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     children: [
                       Expanded(
                         child: Text(
-                          notification['title'],
+                          notification.title,
                           style: GoogleFonts.dmSans(
                             fontSize: 14,
                             fontWeight: isUnread
@@ -265,7 +191,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   ),
                   SizedBox(height: 0.5.h),
                   Text(
-                    notification['message'],
+                    notification.message,
                     style: GoogleFonts.dmSans(
                       fontSize: 13,
                       fontWeight: FontWeight.w400,
@@ -276,7 +202,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   ),
                   SizedBox(height: 0.8.h),
                   Text(
-                    notification['time'],
+                    notification.time,
                     style: GoogleFonts.dmSans(
                       fontSize: 11,
                       fontWeight: FontWeight.w400,
@@ -336,9 +262,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   void _markAsRead(String id) {
     HapticUtil.lightImpact();
     setState(() {
-      final index = _notifications.indexWhere((n) => n['id'] == id);
+      final index = _notifications.indexWhere((n) => n.id == id);
       if (index != -1) {
-        _notifications[index]['isRead'] = true;
+        _notifications[index] = _notifications[index].copyWith(isRead: true);
       }
     });
   }
@@ -346,9 +272,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   void _markAllAsRead() {
     HapticUtil.mediumImpact();
     setState(() {
-      for (var notification in _notifications) {
-        notification['isRead'] = true;
-      }
+      _notifications = _notifications
+          .map((n) => n.copyWith(isRead: true))
+          .toList();
     });
   }
 }

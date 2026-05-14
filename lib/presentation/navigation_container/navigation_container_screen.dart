@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../../core/app_settings.dart';
 
 import '../../widgets/custom_bottom_bar.dart';
@@ -21,14 +20,6 @@ class NavigationContainerScreen extends StatefulWidget {
 class _NavigationContainerScreenState extends State<NavigationContainerScreen> {
   String _currentRoute = '/home-today-screen';
 
-  late final Map<String, Widget> _screens = {
-    '/home-today-screen': HomeTodayScreen(onSeeAllHabits: () => _onNavigate('/habits-library-screen')),
-    '/habits-library-screen': const WorkoutsLibraryScreen(),
-    '/challenges-screen': const ProgramsScreen(),
-    '/progress-tracking-screen': const ProgressTrackingScreen(),
-    '/profile-settings-screen': const ProfileSettingsScreen(),
-  };
-
   void _onNavigate(String route) {
     if (_currentRoute == route) return;
 
@@ -36,6 +27,29 @@ class _NavigationContainerScreenState extends State<NavigationContainerScreen> {
     setState(() {
       _currentRoute = route;
     });
+  }
+
+  Widget _buildScreen() {
+    switch (_currentRoute) {
+      case '/home-today-screen':
+        return HomeTodayScreen(
+          onSeeAllHabits: () => _onNavigate('/habits-library-screen'),
+          onViewChallenge: () => _onNavigate('/challenges-screen'),
+        );
+      case '/habits-library-screen':
+        return const WorkoutsLibraryScreen();
+      case '/challenges-screen':
+        return const ProgramsScreen();
+      case '/progress-tracking-screen':
+        return const ProgressTrackingScreen();
+      case '/profile-settings-screen':
+        return const ProfileSettingsScreen();
+      default:
+        return HomeTodayScreen(
+          onSeeAllHabits: () => _onNavigate('/habits-library-screen'),
+          onViewChallenge: () => _onNavigate('/challenges-screen'),
+        );
+    }
   }
 
   @override
@@ -63,7 +77,7 @@ class _NavigationContainerScreenState extends State<NavigationContainerScreen> {
         },
         child: KeyedSubtree(
           key: ValueKey<String>(_currentRoute),
-          child: _screens[_currentRoute] ?? _screens['/home-today-screen']!,
+          child: _buildScreen(),
         ),
       ),
       bottomNavigationBar: CustomBottomBar(

@@ -8,6 +8,7 @@ import '../presentation/onboarding_flow/onboarding_flow.dart';
 import '../presentation/add_habit_screen/add_habit_screen.dart';
 import '../presentation/edit_habit_screen/edit_habit_screen.dart';
 import '../presentation/notifications_screen/notifications_screen.dart';
+import '../presentation/paywall_screen/paywall_screen.dart';
 
 /// Application routes configuration
 class AppRoutes {
@@ -26,6 +27,7 @@ class AppRoutes {
   static const String addHabitScreen = '/add-habit-screen';
   static const String editHabitScreen = '/edit-habit-screen';
   static const String notificationsScreen = '/notifications-screen';
+  static const String paywallScreen = '/paywall-screen';
 
   /// Routes map
   static Map<String, WidgetBuilder> get routes => {
@@ -37,5 +39,6 @@ class AppRoutes {
         addHabitScreen: (context) => const AddHabitScreen(),
         editHabitScreen: (context) => const EditHabitScreen(),
         notificationsScreen: (context) => const NotificationsScreen(),
+        paywallScreen: (context) => const PaywallScreen(),
       };
 }

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
+
 import '../../core/app_settings.dart';
 import '../../core/challenge_manager.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../../data/repositories/challenge_repository.dart';
+import '../../data/models/challenge.dart';
 
 class ProgramsScreen extends StatefulWidget {
   const ProgramsScreen({super.key});
@@ -13,92 +15,15 @@ class ProgramsScreen extends StatefulWidget {
 
 class _ProgramsScreenState extends State<ProgramsScreen>
     with SingleTickerProviderStateMixin {
+  final ChallengeRepository _challengeRepository = ChallengeRepository();
   late TabController _tabController;
-
-  final List<Map<String, dynamic>> _availableChallenges = [
-    {
-      'id': 2,
-      'title': '21-Day No Sugar Challenge',
-      'description':
-          'Eliminate added sugars for 21 days to reset your palate and health.',
-      'icon': Icons.no_food_rounded,
-      'color': 0xFFFF6B35,
-      'duration': '21 days',
-      'difficulty': 'Hard',
-      'participants': '8.2K',
-      'rating': 4.7,
-      'category': 'Health',
-    },
-    {
-      'id': 3,
-      'title': '7-Day Reading Sprint',
-      'description': 'Read at least 30 pages every day for a week.',
-      'icon': Icons.menu_book_rounded,
-      'color': 0xFFED8936,
-      'duration': '7 days',
-      'difficulty': 'Medium',
-      'participants': '5.6K',
-      'rating': 4.8,
-      'category': 'Learning',
-    },
-    {
-      'id': 4,
-      'title': '14-Day Morning Routine',
-      'description':
-          'Wake up at 6 AM and complete your morning routine for 2 weeks.',
-      'icon': Icons.wb_sunny_rounded,
-      'color': 0xFFFBBF24,
-      'duration': '14 days',
-      'difficulty': 'Medium',
-      'participants': '15.1K',
-      'rating': 4.6,
-      'category': 'Productivity',
-    },
-    {
-      'id': 5,
-      'title': '30-Day Fitness Streak',
-      'description':
-          'Exercise for at least 20 minutes every day for a month.',
-      'icon': Icons.fitness_center_rounded,
-      'color': 0xFF00C896,
-      'duration': '30 days',
-      'difficulty': 'Hard',
-      'participants': '22.3K',
-      'rating': 4.9,
-      'category': 'Fitness',
-    },
-    {
-      'id': 6,
-      'title': '10-Day Digital Detox',
-      'description':
-          'Limit social media to 30 minutes per day for 10 days.',
-      'icon': Icons.phone_disabled_rounded,
-      'color': 0xFF64748B,
-      'duration': '10 days',
-      'difficulty': 'Hard',
-      'participants': '9.7K',
-      'rating': 4.5,
-      'category': 'Mindfulness',
-    },
-    {
-      'id': 7,
-      'title': '5-Day Gratitude Practice',
-      'description':
-          'Write 5 things you\'re grateful for every morning.',
-      'icon': Icons.favorite_rounded,
-      'color': 0xFFEC4899,
-      'duration': '5 days',
-      'difficulty': 'Easy',
-      'participants': '18.9K',
-      'rating': 4.8,
-      'category': 'Mindfulness',
-    },
-  ];
+  late final List<Challenge> _availableChallenges;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _availableChallenges = _challengeRepository.getAvailableChallenges();
     ChallengeManager.addListener(_onChallengesChanged);
   }
 
@@ -111,6 +36,21 @@ class _ProgramsScreenState extends State<ProgramsScreen>
 
   void _onChallengesChanged() {
     if (mounted) setState(() {});
+  }
+
+  Map<String, dynamic> _challengeToMap(Challenge c) {
+    return {
+      'id': c.id,
+      'title': c.title,
+      'description': c.description,
+      'icon': c.icon,
+      'color': c.colorValue,
+      'duration': c.duration,
+      'difficulty': c.difficulty,
+      'participants': c.participants,
+      'rating': c.rating,
+      'category': c.category,
+    };
   }
 
   @override
@@ -406,6 +346,34 @@ class _ProgramsScreenState extends State<ProgramsScreen>
                     ),
                   ],
                 ),
+                const SizedBox(height: 12),
+                Center(
+                  child: TextButton.icon(
+                    onPressed: () async {
+                      final confirmed = await showDialog<bool>(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                          title: const Text('Leave Challenge'),
+                          content: Text('Are you sure you want to leave "${challenge['title']}"? Your progress will be lost.'),
+                          actions: [
+                            TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
+                            ElevatedButton(
+                              onPressed: () => Navigator.of(ctx).pop(true),
+                              style: ElevatedButton.styleFrom(backgroundColor: Colors.red.shade600, foregroundColor: Colors.white),
+                              child: const Text('Leave'),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (confirmed == true) {
+                        ChallengeManager.leaveChallenge(challenge['id'] as int);
+                      }
+                    },
+                    icon: Icon(Icons.logout_rounded, size: 16, color: Colors.red.shade400),
+                    label: Text('Leave Challenge', style: GoogleFonts.dmSans(fontSize: 12, color: Colors.red.shade400)),
+                  ),
+                ),
               ],
             ),
           ),
@@ -418,7 +386,7 @@ class _ProgramsScreenState extends State<ProgramsScreen>
     final activeIds =
         ChallengeManager.activeChallenges.map((c) => c['id'] as int).toSet();
     final available =
-        _availableChallenges.where((c) => !activeIds.contains(c['id'])).toList();
+        _availableChallenges.where((c) => !activeIds.contains(c.id)).toList();
 
     if (available.isEmpty) {
       return Center(
@@ -452,10 +420,10 @@ class _ProgramsScreenState extends State<ProgramsScreen>
       itemCount: available.length,
       itemBuilder: (context, index) {
         final challenge = available[index];
-        final color = Color(challenge['color'] as int);
+        final color = challenge.color;
 
         return GestureDetector(
-          onTap: () => _showChallengeDetail(theme, challenge, color),
+          onTap: () => _showChallengeDetail(theme, _challengeToMap(challenge), color),
           child: Container(
             margin: const EdgeInsets.only(bottom: 14),
             padding: const EdgeInsets.all(16),
@@ -486,7 +454,7 @@ class _ProgramsScreenState extends State<ProgramsScreen>
                         borderRadius: BorderRadius.circular(14),
                       ),
                       child: Icon(
-                        challenge['icon'] as IconData,
+                        challenge.icon,
                         color: color,
                         size: 26,
                       ),
@@ -497,7 +465,7 @@ class _ProgramsScreenState extends State<ProgramsScreen>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            challenge['title'] as String,
+                            challenge.title,
                             style: GoogleFonts.dmSans(
                               fontSize: 15,
                               fontWeight: FontWeight.w700,
@@ -511,7 +479,7 @@ class _ProgramsScreenState extends State<ProgramsScreen>
                                   size: 13,
                                   color: theme.colorScheme.onSurfaceVariant),
                               const SizedBox(width: 3),
-                              Text('${challenge['participants']} joined',
+                              Text('${challenge.participants} joined',
                                   style: GoogleFonts.dmSans(
                                       fontSize: 12,
                                       color:
@@ -520,7 +488,7 @@ class _ProgramsScreenState extends State<ProgramsScreen>
                               Icon(Icons.star_rounded,
                                   size: 13, color: const Color(0xFFFBBF24)),
                               const SizedBox(width: 3),
-                              Text('${challenge['rating']}',
+                              Text('${challenge.rating}',
                                   style: GoogleFonts.dmSans(
                                       fontSize: 12,
                                       color:
@@ -534,7 +502,7 @@ class _ProgramsScreenState extends State<ProgramsScreen>
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  challenge['description'] as String,
+                  challenge.description,
                   style: GoogleFonts.dmSans(
                     fontSize: 13,
                     color: theme.colorScheme.onSurfaceVariant,
@@ -546,23 +514,23 @@ class _ProgramsScreenState extends State<ProgramsScreen>
                 const SizedBox(height: 12),
                 Row(
                   children: [
-                    _buildTag(theme, challenge['duration'] as String,
+                    _buildTag(theme, challenge.duration,
                         Icons.calendar_today_rounded),
                     const SizedBox(width: 8),
-                    _buildTag(theme, challenge['difficulty'] as String,
+                    _buildTag(theme, challenge.difficulty,
                         Icons.bar_chart_rounded),
                     const SizedBox(width: 8),
-                    _buildTag(theme, challenge['category'] as String,
+                    _buildTag(theme, challenge.category,
                         Icons.label_rounded),
                     const Spacer(),
                     ElevatedButton(
                       onPressed: () {
                         HapticUtil.lightImpact();
-                        ChallengeManager.joinChallenge(challenge);
+                        ChallengeManager.joinChallenge(_challengeToMap(challenge));
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text(
-                                'Joined ${challenge['title']}! 🎉'),
+                                'Joined ${challenge.title}! 🎉'),
                             behavior: SnackBarBehavior.floating,
                             shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12)),
@@ -761,6 +729,38 @@ class _ProgramsScreenState extends State<ProgramsScreen>
                   ),
                 ),
               ),
+              if (isActive) ...[
+                const SizedBox(height: 12),
+                Center(
+                  child: TextButton.icon(
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      showDialog<bool>(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                          title: const Text('Leave Challenge'),
+                          content: Text('Are you sure you want to leave "${challenge['title']}"? Your progress will be lost.'),
+                          actions: [
+                            TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
+                            ElevatedButton(
+                              onPressed: () => Navigator.of(ctx).pop(true),
+                              style: ElevatedButton.styleFrom(backgroundColor: Colors.red.shade600, foregroundColor: Colors.white),
+                              child: const Text('Leave'),
+                            ),
+                          ],
+                        ),
+                      ).then((confirmed) {
+                        if (confirmed == true) {
+                          ChallengeManager.leaveChallenge(challenge['id'] as int);
+                        }
+                      });
+                    },
+                    icon: Icon(Icons.logout_rounded, size: 16, color: Colors.red.shade400),
+                    label: Text('Leave Challenge', style: GoogleFonts.dmSans(fontSize: 12, color: Colors.red.shade400)),
+                  ),
+                ),
+              ],
             ],
           ),
         ),
