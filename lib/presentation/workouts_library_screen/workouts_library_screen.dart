@@ -154,6 +154,7 @@ class _WorkoutsLibraryScreenState extends State<WorkoutsLibraryScreen>
     setState(() {});
   }
 
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);

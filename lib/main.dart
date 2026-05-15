@@ -20,6 +20,8 @@ Future<void> main() async {
 
   await AppSettings.load();
   await ChallengeManager.load();
+  await HabitRepository.loadFromSupabase();
+  await ProgressRepository.loadFromSupabase();
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   runApp(const MyApp());
 }

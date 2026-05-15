@@ -36,7 +36,7 @@ class ChallengeManager {
     for (final c in _activeChallenges) {
       final repo = HabitRepository();
       if (!repo.hasChallengeHabit(c['id'] as int)) {
-        repo.addChallengeHabit(
+        await repo.addChallengeHabit(
           c['title'] as String,
           IconData(c['icon'] as int, fontFamily: 'MaterialIcons'),
           c['color'] as int,
@@ -69,7 +69,7 @@ class ChallengeManager {
       'participants': challenge['participants'],
     };
     _activeChallenges.add(active);
-    HabitRepository().addChallengeHabit(
+    await HabitRepository().addChallengeHabit(
       challenge['title'] as String,
       challenge['icon'] as IconData,
       challenge['color'] as int,
@@ -104,7 +104,7 @@ class ChallengeManager {
 
   static Future<void> leaveChallenge(int challengeId) async {
     _activeChallenges.removeWhere((c) => c['id'] == challengeId);
-    HabitRepository().removeChallengeHabit(challengeId);
+    await HabitRepository().removeChallengeHabit(challengeId);
     await _save();
     _notify();
   }

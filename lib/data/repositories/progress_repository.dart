@@ -1,26 +1,64 @@
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/habit.dart';
 import '../models/progress_stats.dart';
-import '../repositories/habit_repository.dart';
+import 'habit_repository.dart';
 
 class ProgressRepository {
+  static SupabaseClient get _client => Supabase.instance.client;
   static final Map<String, Map<int, bool>> _dailyLog = {};
+  static bool _loaded = false;
+
+  static String get _userId => _client.auth.currentUser?.id ?? '';
 
   static String _dateKey(DateTime date) =>
       '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
 
-  static int _daysBetween(DateTime a, DateTime b) =>
-      DateTime(a.year, a.month, a.day).difference(DateTime(b.year, b.month, b.day)).inDays;
+  static Future<void> loadFromSupabase() async {
+    if (_loaded) return;
+    _loaded = true;
+    _dailyLog.clear();
+    if (_userId.isEmpty) return;
 
-  static void recordToggle(int habitId, bool isCompleted) {
+    final data = await _client.from('daily_logs')
+      .select('habit_id, log_date, is_completed')
+      .eq('user_id', _userId)
+      .order('log_date');
+
+    for (final row in (data as List)) {
+      final date = row['log_date'] as String;
+      final habitId = row['habit_id'] as int;
+      final isCompleted = row['is_completed'] as bool;
+      _dailyLog.putIfAbsent(date, () => {});
+      _dailyLog[date]![habitId] = isCompleted;
+    }
+  }
+
+  static Future<void> recordToggle(int habitId, bool isCompleted) async {
     final today = _dateKey(DateTime.now());
     _dailyLog.putIfAbsent(today, () => {});
     _dailyLog[today]![habitId] = isCompleted;
+
+    if (isCompleted) {
+      await _client.from('daily_logs').upsert({
+        'user_id': _userId,
+        'habit_id': habitId,
+        'log_date': today,
+        'is_completed': true,
+      }, onConflict: 'user_id, habit_id, log_date');
+    } else {
+      await _client.from('daily_logs')
+        .delete()
+        .eq('user_id', _userId)
+        .eq('habit_id', habitId)
+        .eq('log_date', today);
+    }
   }
 
-  static void removeHabitLogs(int habitId) {
+  static Future<void> removeHabitLogs(int habitId) async {
     for (final date in _dailyLog.keys) {
       _dailyLog[date]?.remove(habitId);
     }
+    await _client.from('daily_logs').delete().eq('habit_id', habitId);
   }
 
   static bool isHabitCompletedOn(int habitId, DateTime date) {
@@ -53,8 +91,6 @@ class ProgressRepository {
   }
 
   List<Habit> get _allHabits => HabitRepository().getAllHabits();
-
-  int get _activeCount => _allHabits.length;
 
   bool _allCompletedOn(String dateKey, List<Habit> habits) {
     final dayLog = _dailyLog[dateKey];

@@ -30,6 +30,8 @@ class _HomeTodayScreenState extends State<HomeTodayScreen> {
 
   List<Habit> _todayHabits = [];
   List<WeeklyDataPoint> _weeklyData = [];
+  String? _aiInsight;
+  bool _isLoadingInsight = true;
 
   @override
   void initState() {
@@ -40,6 +42,19 @@ class _HomeTodayScreenState extends State<HomeTodayScreen> {
     _weeklyData = _progressRepository.getWeeklyData();
     _userName = _userRepository.getUserProfile()?.name.split(' ').first ?? 'there';
     _currentStreak = _progressRepository.getOverallStats()?.currentStreak ?? 0;
+    _loadAIInsight();
+  }
+
+  Future<void> _loadAIInsight() async {
+    try {
+      final insight = await AIService.generateInsight(
+        habits: _habitRepository.getTodayHabits(),
+        stats: _progressRepository.getOverallStats(),
+      );
+      if (mounted) setState(() { _aiInsight = insight; _isLoadingInsight = false; });
+    } catch (_) {
+      if (mounted) setState(() => _isLoadingInsight = false);
+    }
   }
 
   @override
@@ -65,9 +80,9 @@ class _HomeTodayScreenState extends State<HomeTodayScreen> {
     return 'Good evening';
   }
 
-  void _toggleHabit(int id) {
+  Future<void> _toggleHabit(int id) async {
     HapticUtil.mediumImpact();
-    _habitRepository.toggleComplete(id);
+    await _habitRepository.toggleComplete(id);
     _habitRepository.syncStreaks(_progressRepository);
     setState(() {
       _todayHabits = _habitRepository.getTodayHabits();
@@ -91,7 +106,7 @@ class _HomeTodayScreenState extends State<HomeTodayScreen> {
       arguments: habitArgs,
     );
     if (result is Map<String, dynamic>) {
-      _habitRepository.updateHabit(habit.id, result);
+      await _habitRepository.updateHabit(habit.id, result);
       setState(() => _todayHabits = _habitRepository.getTodayHabits());
     }
   }
@@ -136,7 +151,7 @@ class _HomeTodayScreenState extends State<HomeTodayScreen> {
       ),
     );
     if (confirmed == true) {
-      _habitRepository.removeHabit(habit.id);
+      await _habitRepository.removeHabit(habit.id);
       setState(() => _todayHabits = _habitRepository.getTodayHabits());
     }
   }
@@ -224,6 +239,7 @@ class _HomeTodayScreenState extends State<HomeTodayScreen> {
               children: [
                 _buildStreakAndProgress(theme),
                 _buildWeeklyOverview(theme),
+                _buildAIInsightCard(theme),
                 _buildActiveChallengeCard(theme),
                 _buildTodayHabitsSection(theme),
                 SizedBox(height: 10.h),
@@ -234,11 +250,11 @@ class _HomeTodayScreenState extends State<HomeTodayScreen> {
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () async {
-          final result = await Navigator.pushNamed(context, '/add-habit-screen');
-          if (result is Map<String, dynamic> && mounted) {
-            _habitRepository.addHabit(result);
-            setState(() => _todayHabits = _habitRepository.getTodayHabits());
-          }
+      final result = await Navigator.pushNamed(context, '/add-habit-screen');
+      if (result is Map<String, dynamic> && mounted) {
+        await _habitRepository.addHabit(result);
+        setState(() => _todayHabits = _habitRepository.getTodayHabits());
+      }
         },
         backgroundColor: theme.colorScheme.primary,
         foregroundColor: theme.colorScheme.onPrimary,
@@ -292,15 +308,31 @@ class _HomeTodayScreenState extends State<HomeTodayScreen> {
                           Text('HabitFlow', style: GoogleFonts.dmSans(fontSize: 22, fontWeight: FontWeight.w800, color: theme.colorScheme.onSurface, letterSpacing: -0.5)),
                         ],
                       ),
-                      Container(
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: IconButton(
-                          icon: Icon(Icons.notifications_outlined, color: theme.colorScheme.onSurface, size: 22),
-                          onPressed: () => Navigator.pushNamed(context, AppRoutes.notificationsScreen),
-                        ),
+                      Row(
+                        children: [
+                          Container(
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: IconButton(
+                              icon: Icon(Icons.auto_awesome_rounded, color: theme.colorScheme.primary, size: 20),
+                              onPressed: () => Navigator.pushNamed(context, AppRoutes.aiCoachScreen),
+                              tooltip: 'AI Coach',
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Container(
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: IconButton(
+                              icon: Icon(Icons.notifications_outlined, color: theme.colorScheme.onSurface, size: 22),
+                              onPressed: () => Navigator.pushNamed(context, AppRoutes.notificationsScreen),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -442,6 +474,72 @@ class _HomeTodayScreenState extends State<HomeTodayScreen> {
     );
   }
 
+  Widget _buildAIInsightCard(ThemeData theme) {
+    if (_isLoadingInsight) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.primary.withValues(alpha: 0.06),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.15)),
+          ),
+          child: Row(
+            children: [
+              SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: theme.colorScheme.primary)),
+              const SizedBox(width: 10),
+              Text('Generating AI insight...', style: GoogleFonts.dmSans(fontSize: 12, color: theme.colorScheme.primary)),
+            ],
+          ),
+        ),
+      );
+    }
+    if (_aiInsight == null || _aiInsight!.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      child: GestureDetector(
+        onTap: () => Navigator.pushNamed(context, AppRoutes.aiCoachScreen),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [theme.colorScheme.primary.withValues(alpha: 0.08), theme.colorScheme.tertiary.withValues(alpha: 0.06)],
+            ),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.15)),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(Icons.auto_awesome_rounded, color: theme.colorScheme.primary, size: 18),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('AI Insight', style: GoogleFonts.dmSans(fontSize: 12, fontWeight: FontWeight.w700, color: theme.colorScheme.primary)),
+                    const SizedBox(height: 4),
+                    Text(_aiInsight!, style: GoogleFonts.dmSans(fontSize: 12, color: theme.colorScheme.onSurfaceVariant, height: 1.4), maxLines: 3, overflow: TextOverflow.ellipsis),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right_rounded, size: 18, color: theme.colorScheme.onSurfaceVariant),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildActiveChallengeCard(ThemeData theme) {
     final activeList = ChallengeManager.activeChallenges;
     if (activeList.isEmpty) return const SizedBox.shrink();
@@ -563,8 +661,8 @@ class _HomeTodayScreenState extends State<HomeTodayScreen> {
         );
         return confirmed == true;
       },
-      onDismissed: (_) {
-        _habitRepository.removeHabit(habit.id);
+      onDismissed: (_) async {
+        await _habitRepository.removeHabit(habit.id);
         setState(() => _todayHabits = _habitRepository.getTodayHabits());
       },
       background: Container(

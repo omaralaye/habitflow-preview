@@ -41,9 +41,9 @@ class _HabitFocusScreenState extends State<HabitFocusScreen> {
     });
   }
 
-  void _toggleComplete() {
+  Future<void> _toggleComplete() async {
     HapticUtil.mediumImpact();
-    _habitRepository.toggleComplete(widget.habit.id);
+    await _habitRepository.toggleComplete(widget.habit.id);
     _habitRepository.syncStreaks(_progressRepository);
     setState(() {
       _isCompleted = !_isCompleted;
@@ -66,7 +66,7 @@ class _HabitFocusScreenState extends State<HabitFocusScreen> {
       arguments: habitArgs,
     );
     if (result is Map<String, dynamic>) {
-      _habitRepository.updateHabit(habit.id, result);
+      await _habitRepository.updateHabit(habit.id, result);
       if (mounted) setState(() {});
     }
   }
@@ -91,7 +91,7 @@ class _HabitFocusScreenState extends State<HabitFocusScreen> {
       ),
     );
     if (confirmed == true) {
-      _habitRepository.removeHabit(widget.habit.id);
+      await _habitRepository.removeHabit(widget.habit.id);
       if (mounted) Navigator.of(context).pop();
     }
   }

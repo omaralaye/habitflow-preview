@@ -5,9 +5,6 @@ enabled = true
 enabled = true
 policy = "per_worker"
 
-[functions]
-enabled = true
-
 [functions.stripe-create-checkout]
 enabled = true
 verify_jwt = true
@@ -20,8 +17,9 @@ verify_jwt = false
 enabled = true
 verify_jwt = true
 
-[integrations]
-vercel = false
+[functions.ai-chat]
+enabled = true
+verify_jwt = true
 
 [api]
 enabled = true

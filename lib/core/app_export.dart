@@ -25,3 +25,4 @@ export '../data/repositories/user_repository.dart';
 export '../data/models/subscription_plan.dart';
 export '../data/models/user_subscription.dart';
 export '../services/subscription_service.dart';
+export '../services/ai_service.dart';

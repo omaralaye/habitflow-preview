@@ -9,6 +9,8 @@ import '../presentation/add_habit_screen/add_habit_screen.dart';
 import '../presentation/edit_habit_screen/edit_habit_screen.dart';
 import '../presentation/notifications_screen/notifications_screen.dart';
 import '../presentation/paywall_screen/paywall_screen.dart';
+import '../presentation/ai_coach_screen/ai_coach_screen.dart';
+import '../presentation/habit_analysis_screen/habit_analysis_screen.dart';
 
 /// Application routes configuration
 class AppRoutes {
@@ -28,6 +30,8 @@ class AppRoutes {
   static const String editHabitScreen = '/edit-habit-screen';
   static const String notificationsScreen = '/notifications-screen';
   static const String paywallScreen = '/paywall-screen';
+  static const String aiCoachScreen = '/ai-coach-screen';
+  static const String habitAnalysisScreen = '/habit-analysis-screen';
 
   /// Routes map
   static Map<String, WidgetBuilder> get routes => {
@@ -40,5 +44,7 @@ class AppRoutes {
         editHabitScreen: (context) => const EditHabitScreen(),
         notificationsScreen: (context) => const NotificationsScreen(),
         paywallScreen: (context) => const PaywallScreen(),
+        aiCoachScreen: (context) => const AICoachScreen(),
+        habitAnalysisScreen: (context) => const HabitAnalysisScreen(),
       };
 }

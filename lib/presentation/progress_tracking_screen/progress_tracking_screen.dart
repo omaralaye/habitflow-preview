@@ -7,6 +7,7 @@ import 'package:share_plus/share_plus.dart';
 import '../../core/app_export.dart';
 import '../../data/repositories/progress_repository.dart';
 import '../../data/models/progress_stats.dart';
+import '../../routes/app_routes.dart';
 
 /// Progress Tracking Screen - Habit statistics and analytics
 class ProgressTrackingScreen extends StatefulWidget {
@@ -98,6 +99,8 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
               _buildCalendarHeatmap(theme),
               SizedBox(height: 2.h),
               _buildHabitBreakdown(theme),
+              SizedBox(height: 2.h),
+              _buildAIAnalysisLink(theme),
               SizedBox(height: 10.h),
             ],
           ),
@@ -570,6 +573,43 @@ class _ProgressTrackingScreenState extends State<ProgressTrackingScreen> {
             );
           }),
         ],
+      ),
+    );
+  }
+
+  Widget _buildAIAnalysisLink(ThemeData theme) {
+    return GestureDetector(
+      onTap: () => Navigator.pushNamed(context, AppRoutes.habitAnalysisScreen),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [theme.colorScheme.primary.withValues(alpha: 0.08), theme.colorScheme.tertiary.withValues(alpha: 0.06)],
+          ),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.15)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(color: theme.colorScheme.primary.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12)),
+              child: Icon(Icons.auto_awesome_rounded, color: theme.colorScheme.primary, size: 22),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('AI Habit Analysis', style: GoogleFonts.dmSans(fontSize: 15, fontWeight: FontWeight.w700, color: theme.colorScheme.onSurface)),
+                  const SizedBox(height: 4),
+                  Text('Get insights on your patterns and schedule', style: GoogleFonts.dmSans(fontSize: 12, color: theme.colorScheme.onSurfaceVariant)),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right_rounded, color: theme.colorScheme.onSurfaceVariant, size: 20),
+          ],
+        ),
       ),
     );
   }

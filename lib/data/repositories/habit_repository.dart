@@ -1,12 +1,112 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/habit.dart';
 import '../models/category.dart';
-import '../repositories/progress_repository.dart';
+import 'progress_repository.dart';
 
 class HabitRepository {
+  static SupabaseClient get _client => Supabase.instance.client;
   static final List<Habit> _habits = [];
+  static bool _loaded = false;
 
-  static int _nextId = 1;
+  static String get _userId => _client.auth.currentUser?.id ?? '';
+
+  static String _dateKey(DateTime date) =>
+      '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+
+  static Future<void> loadFromSupabase() async {
+    if (_loaded) return;
+    _loaded = true;
+    await _fetchAll();
+  }
+
+  static Future<void> _fetchAll() async {
+    _habits.clear();
+    if (_userId.isEmpty) return;
+
+    final data = await _client.from('habits').select().eq('user_id', _userId).order('id');
+    final todayKey = _dateKey(DateTime.now());
+
+    final todayLogs = await _client.from('daily_logs')
+      .select('habit_id, is_completed')
+      .eq('user_id', _userId)
+      .eq('log_date', todayKey);
+
+    final completedIds = <int>{};
+    for (final log in (todayLogs as List)) {
+      if (log['is_completed'] == true) {
+        completedIds.add(log['habit_id'] as int);
+      }
+    }
+
+    final allLogs = await _client.from('daily_logs')
+      .select('habit_id, log_date, is_completed')
+      .eq('user_id', _userId)
+      .order('log_date', ascending: false);
+
+    final logsByHabit = <int, List<Map<String, dynamic>>>{};
+    for (final log in (allLogs as List)) {
+      final hid = log['habit_id'] as int;
+      logsByHabit.putIfAbsent(hid, () => []).add(log as Map<String, dynamic>);
+    }
+
+    for (final json in (data as List)) {
+      final habit = _habitFromJson(json as Map<String, dynamic>);
+      final isCompleted = completedIds.contains(habit.id);
+      final streak = _calculateStreakFromLogs(logsByHabit[habit.id] ?? []);
+      _habits.add(habit.copyWith(isCompleted: isCompleted, streak: streak));
+    }
+  }
+
+  static Habit _habitFromJson(Map<String, dynamic> json) {
+    return Habit(
+      id: json['id'] as int,
+      title: json['title'] as String? ?? '',
+      description: json['description'] as String? ?? '',
+      icon: IconData(json['icon'] as int? ?? Icons.check_circle_rounded.codePoint, fontFamily: 'MaterialIcons'),
+      colorValue: json['color_value'] as int? ?? 0xFF64748B,
+      category: json['category'] as String? ?? 'Other',
+      duration: json['duration'] as String? ?? 'Daily',
+      difficulty: json['difficulty'] as String? ?? 'Easy',
+      popularity: (json['popularity'] as num?)?.toDouble() ?? 0,
+      users: json['users'] as String? ?? '',
+      isAdded: true,
+      isChallenge: json['is_challenge'] as bool? ?? false,
+      challengeId: json['challenge_id'] as int?,
+    );
+  }
+
+  static Map<String, dynamic> _habitToSupabase(Habit habit) {
+    return {
+      'user_id': _userId,
+      'title': habit.title,
+      'description': habit.description,
+      'icon': habit.icon.codePoint,
+      'color_value': habit.colorValue,
+      'category': habit.category,
+      'duration': habit.duration,
+      'difficulty': habit.difficulty,
+      'popularity': habit.popularity,
+      'users': habit.users,
+      'is_added': true,
+      'is_challenge': habit.isChallenge,
+      'challenge_id': habit.challengeId,
+    };
+  }
+
+  static int _calculateStreakFromLogs(List<Map<String, dynamic>> logs) {
+    if (logs.isEmpty) return 0;
+    logs.sort((a, b) => (a['log_date'] as String).compareTo(b['log_date'] as String));
+    int streak = 0;
+    for (int i = logs.length - 1; i >= 0; i--) {
+      if (logs[i]['is_completed'] == true) {
+        streak++;
+      } else {
+        break;
+      }
+    }
+    return streak;
+  }
 
   static IconData _iconForCategory(String category) {
     switch (category) {
@@ -38,7 +138,7 @@ class HabitRepository {
 
   List<Habit> getAllHabits() => List.unmodifiable(_habits);
 
-  List<Habit> getMyHabits() => _habits.where((h) => h.isAdded).toList();
+  List<Habit> getMyHabits() => _habits.toList();
 
   List<Habit> filteredHabits({
     required String query,
@@ -68,10 +168,10 @@ class HabitRepository {
     }
   }
 
-  Habit addHabit(Map<String, dynamic> data) {
+  Future<Habit> addHabit(Map<String, dynamic> data) async {
     final category = data['category'] as String? ?? 'Other';
     final habit = Habit(
-      id: _nextId++,
+      id: 0,
       title: data['name'] as String? ?? 'New Habit',
       icon: _iconForCategory(category),
       colorValue: _colorForCategory(category),
@@ -79,30 +179,42 @@ class HabitRepository {
       duration: data['frequency'] as String? ?? 'Daily',
       isAdded: true,
     );
-    _habits.add(habit);
-    return habit;
+    final json = _habitToSupabase(habit);
+    json['title'] = habit.title;
+    json['icon'] = habit.icon.codePoint;
+    json['color_value'] = habit.colorValue;
+    json['category'] = habit.category;
+    json['duration'] = habit.duration;
+
+    final response = await _client.from('habits').insert(json).select().single();
+    final saved = _habitFromJson(response);
+    _habits.add(saved);
+    return saved;
   }
 
-  void updateHabit(int id, Map<String, dynamic> data) {
+  Future<void> updateHabit(int id, Map<String, dynamic> data) async {
     final index = _habits.indexWhere((h) => h.id == id);
     if (index == -1) return;
     final category = data['category'] as String? ?? _habits[index].category;
-    _habits[index] = _habits[index].copyWith(
+    final updated = _habits[index].copyWith(
       title: data['name'] as String?,
       category: category,
       duration: data['frequency'] as String?,
       icon: _iconForCategory(category),
       colorValue: _colorForCategory(category),
     );
+    await _client.from('habits').update(_habitToSupabase(updated)).eq('id', id);
+    _habits[index] = updated;
   }
 
-  void removeHabit(int id) {
+  Future<void> removeHabit(int id) async {
     _habits.removeWhere((h) => h.id == id);
+    await _client.from('habits').delete().eq('id', id).eq('user_id', _userId);
   }
 
-  void addChallengeHabit(String title, IconData icon, int colorValue, int challengeId) {
-    _habits.add(Habit(
-      id: _nextId++,
+  Future<void> addChallengeHabit(String title, IconData icon, int colorValue, int challengeId) async {
+    final habit = Habit(
+      id: 0,
       title: title,
       icon: icon,
       colorValue: colorValue,
@@ -111,14 +223,25 @@ class HabitRepository {
       isAdded: true,
       isChallenge: true,
       challengeId: challengeId,
-    ));
+    );
+    final json = _habitToSupabase(habit);
+    json['title'] = habit.title;
+    json['icon'] = habit.icon.codePoint;
+    json['color_value'] = habit.colorValue;
+    json['category'] = habit.category;
+    json['duration'] = habit.duration;
+
+    final response = await _client.from('habits').insert(json).select().single();
+    final saved = _habitFromJson(response);
+    _habits.add(saved);
   }
 
-  void removeChallengeHabit(int challengeId) {
+  Future<void> removeChallengeHabit(int challengeId) async {
     final habitIds = _habits.where((h) => h.challengeId == challengeId).map((h) => h.id).toList();
     _habits.removeWhere((h) => h.challengeId == challengeId);
     for (final id in habitIds) {
-      ProgressRepository.removeHabitLogs(id);
+      await _client.from('daily_logs').delete().eq('habit_id', id);
+      await _client.from('habits').delete().eq('id', id);
     }
   }
 
@@ -136,14 +259,28 @@ class HabitRepository {
     }
   }
 
-  void toggleComplete(int id) {
+  Future<void> toggleComplete(int id) async {
     final index = _habits.indexWhere((h) => h.id == id);
     if (index == -1) return;
     final newCompleted = !_habits[index].isCompleted;
-    _habits[index] = _habits[index].copyWith(
-      isCompleted: newCompleted,
-    );
-    ProgressRepository.recordToggle(id, newCompleted);
+    final todayKey = _dateKey(DateTime.now());
+
+    if (newCompleted) {
+      await _client.from('daily_logs').upsert({
+        'user_id': _userId,
+        'habit_id': id,
+        'log_date': todayKey,
+        'is_completed': true,
+      }, onConflict: 'user_id, habit_id, log_date');
+    } else {
+      await _client.from('daily_logs')
+        .delete()
+        .eq('user_id', _userId)
+        .eq('habit_id', id)
+        .eq('log_date', todayKey);
+    }
+
+    _habits[index] = _habits[index].copyWith(isCompleted: newCompleted);
   }
 
   void toggleAdded(int id) {
@@ -176,16 +313,6 @@ class HabitRepository {
     FrequencyOption(label: 'Weekly', icon: Icons.date_range_rounded, description: 'Once a week'),
     FrequencyOption(label: '3x / Week', icon: Icons.repeat_rounded, description: '3 times a week'),
     FrequencyOption(label: 'Custom', icon: Icons.tune_rounded, description: 'Choose days'),
-  ];
-
-  List<WeeklyDay> get weeklyData => const [
-    WeeklyDay(day: 'M', completed: true),
-    WeeklyDay(day: 'T', completed: true),
-    WeeklyDay(day: 'W', completed: true),
-    WeeklyDay(day: 'T', completed: false),
-    WeeklyDay(day: 'F', completed: true),
-    WeeklyDay(day: 'S', completed: true),
-    WeeklyDay(day: 'S', completed: false),
   ];
 
   List<String> get settingCategories => const [
