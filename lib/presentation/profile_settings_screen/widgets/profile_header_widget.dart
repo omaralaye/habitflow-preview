@@ -157,7 +157,9 @@ class ProfileHeaderWidget extends StatelessWidget {
   }
 
   Widget _buildAvatarContent(ThemeData theme) {
-    final avatarType = userData['avatarType'] as String? ?? 'url';
+    final avatarType = userData['avatarType'] as String? ?? 'emoji';
+    final avatar = userData['avatar'] as String? ?? '';
+
     if (avatarType == 'emoji') {
       return Container(
         width: 100,
@@ -165,14 +167,24 @@ class ProfileHeaderWidget extends StatelessWidget {
         color: theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
         child: Center(
           child: Text(
-            userData['avatar'] as String? ?? '😀',
+            avatar.isNotEmpty ? avatar : '😀',
             style: const TextStyle(fontSize: 44),
           ),
         ),
       );
     }
+    if (avatar.isEmpty) {
+      return Container(
+        width: 100,
+        height: 100,
+        color: theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
+        child: Center(
+          child: Text('😀', style: const TextStyle(fontSize: 44)),
+        ),
+      );
+    }
     return CustomImageWidget(
-      imageUrl: userData["avatar"] as String,
+      imageUrl: avatar,
       width: 100,
       height: 100,
       fit: BoxFit.cover,

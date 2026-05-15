@@ -1,11 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
-import '../../data/models/category.dart';
-import '../../services/subscription_service.dart';
-import '../../routes/app_routes.dart';
 
 class AddHabitScreen extends StatefulWidget {
   const AddHabitScreen({super.key});
@@ -22,7 +18,9 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
 
   bool _useAI = false;
   bool _isParsing = false;
+  bool _isSaving = false;
   String? _aiError;
+  String _parsedDescription = '';
 
   late final List<HabitCategory> _categories;
   late final List<FrequencyOption> _frequencies;
@@ -60,6 +58,7 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
       if (!mounted) return;
 
       _nameController.text = result['title'] ?? '';
+      _parsedDescription = result['description'] ?? '';
       final category = result['category'] ?? 'Other';
       final validCategories = _categories.map((c) => c.label).toList();
       _selectedCategory = validCategories.contains(category) ? category : 'Other';
@@ -130,10 +129,24 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
       return;
     }
 
+    setState(() => _isSaving = true);
+
+    String description = _parsedDescription;
+    if (description.isEmpty) {
+      try {
+        description = await AIService.generateHabitDescription(
+          _nameController.text.trim(), _selectedCategory, _selectedFrequency,
+        );
+      } catch (_) {
+        description = 'A $_selectedFrequency $_selectedCategory habit.';
+      }
+    }
+
     final habitData = {
       'name': _nameController.text.trim(),
       'category': _selectedCategory,
       'frequency': _selectedFrequency,
+      'description': description,
       'reminderEnabled': _reminderEnabled,
       'reminderTime': _reminderEnabled ? _reminderTime.format(context) : null,
     };
@@ -539,21 +552,30 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
       width: double.infinity,
       height: 54,
       child: ElevatedButton(
-        onPressed: _saveHabit,
+        onPressed: _isSaving ? null : _saveHabit,
         style: ElevatedButton.styleFrom(
           backgroundColor: theme.colorScheme.primary,
           foregroundColor: Colors.white,
           elevation: 0,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.add_circle_rounded, size: 20),
-            const SizedBox(width: 10),
-            Text('Create Habit', style: GoogleFonts.dmSans(fontSize: 16, fontWeight: FontWeight.w700, letterSpacing: 0.3)),
-          ],
-        ),
+        child: _isSaving
+            ? Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)),
+                  const SizedBox(width: 10),
+                  Text('Creating...', style: GoogleFonts.dmSans(fontSize: 15, fontWeight: FontWeight.w600)),
+                ],
+              )
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.add_circle_rounded, size: 20),
+                  const SizedBox(width: 10),
+                  Text('Create Habit', style: GoogleFonts.dmSans(fontSize: 16, fontWeight: FontWeight.w700, letterSpacing: 0.3)),
+                ],
+              ),
       ),
     );
   }

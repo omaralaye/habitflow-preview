@@ -497,12 +497,6 @@ class _WorkoutPlayerScreenState extends State<WorkoutPlayerScreen> {
                     ),
                   ),
                 ),
-
-                // Exercise timeline
-                ExerciseTimelineWidget(
-                  exercises: _exercises,
-                  currentExerciseIndex: _currentExerciseIndex,
-                ),
               ],
             ),
 

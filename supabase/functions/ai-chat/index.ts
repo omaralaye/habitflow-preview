@@ -16,7 +16,20 @@ const SYSTEM_PROMPTS: Record<string, string> = {
 - Reference their actual habit names and data
 - Ask thoughtful follow-up questions
 
-You are NOT a general AI assistant. Stay focused on habit coaching.`,
+You are NOT a general AI assistant. Stay focused on habit coaching.
+
+You can also create new habits for the user when they explicitly ask. When the user asks you to create a habit (e.g. "create a meditation habit", "add running to my habits", "set up a reading habit"), include a CREATE_HABIT action block in your response with valid JSON for the habit details. Only create habits when directly asked — do not create habits unprompted. Reference the user's existing habits (provided in context) to avoid creating duplicates.
+
+Format:
+[CREATE_HABIT]{"name":"<habit name>","category":"<category>","frequency":"<frequency>","description":"<brief 1-sentence description>"}[/CREATE_HABIT]
+
+Valid categories: Health, Fitness, Mindfulness, Learning, Productivity, Social, Finance, Other
+Valid frequencies: Daily, Weekdays, Weekends, Weekly, 3x / Week, Custom
+
+Example:
+User: "Can you add a morning yoga habit?"
+Assistant: Great idea! I'll set up a morning yoga habit for you.
+[CREATE_HABIT]{"name":"Morning Yoga","category":"Fitness","frequency":"Daily","description":"Start your day with a calming yoga routine to boost flexibility and focus."}[/CREATE_HABIT]`,
 
   parse_habit: `You are a habit parser for the HabitFlow app. Convert the user's natural language habit description into a structured JSON object. Extract:
 - title: short habit name (required)
@@ -56,6 +69,24 @@ Return a concise analysis (3-5 sentences maximum). Be specific and data-driven.`
 4. Specific, actionable recommendations
 
 Return 2-3 concise suggestions. Be specific about habit names and times.`,
+
+  suggest_challenges: `You are a challenge generator for the HabitFlow app. Given the user's current habits and stats, generate personalized challenge suggestions that complement their existing routine and help them grow.
+
+Rules:
+- Suggest challenges that relate to the user's existing habits (e.g., if they track "Meditation", suggest a "7-Day Mindfulness Challenge")
+- Mix difficulty levels based on their current streak and completion rate
+- Keep descriptions actionable and specific
+
+Return ONLY valid JSON array with 3-4 challenge suggestions. No other text. Each challenge must have:
+- "title": short challenge name (required)
+- "description": brief description (required)
+- "durationDays": number of days — 7, 14, 21, or 30 (required)
+- "difficulty": one of "Easy", "Medium", "Hard" (required)
+- "category": one of "Health", "Fitness", "Mindfulness", "Learning", "Productivity", "Social", "Finance", "Sleep" (required)
+- "dailyTask": what to do each day (optional, max 80 chars)
+
+Example response:
+[{"title":"7-Day Meditation Streak","description":"Meditate for at least 5 minutes every day for a week to build a strong mindfulness habit.","durationDays":7,"difficulty":"Easy","category":"Mindfulness","dailyTask":"Meditate 5+ minutes"},{"title":"14-Day Workout Challenge","description":"Complete one workout session daily for two weeks. Mix cardio and strength for best results.","durationDays":14,"difficulty":"Medium","category":"Fitness","dailyTask":"Complete one workout"}]`,
 };
 
 serve(async (req) => {
@@ -83,7 +114,7 @@ serve(async (req) => {
     }
 
     const { messages, mode, context } = await req.json();
-    const validMode = ["coach", "parse_habit", "insight", "analysis", "schedule"].includes(mode) ? mode : "coach";
+    const validMode = ["coach", "parse_habit", "insight", "analysis", "schedule", "suggest_challenges"].includes(mode) ? mode : "coach";
 
     let contextBlock = "";
     if (context) {
@@ -106,9 +137,9 @@ serve(async (req) => {
       body: JSON.stringify({
         model: NVIDIA_MODEL,
         messages: nvidiaMessages,
-        temperature: validMode === "parse_habit" ? 0.1 : 0.7,
+        temperature: validMode === "parse_habit" || validMode === "suggest_challenges" ? 0.1 : 0.7,
         top_p: 0.95,
-        max_tokens: validMode === "parse_habit" ? 200 : 500,
+        max_tokens: validMode === "parse_habit" ? 200 : validMode === "suggest_challenges" ? 800 : 500,
       }),
     });
 

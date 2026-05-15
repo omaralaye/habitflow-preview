@@ -12,6 +12,9 @@ class AppSettings {
   static bool motivationalQuotes = true;
   static int resetHour = 0;
   static int resetMinute = 0;
+  static String avatarUrl = '';
+  static String displayName = '';
+  static int dailyHabitGoal = 5;
 
   static Future<void> load() async {
     final prefs = await SharedPreferences.getInstance();
@@ -23,6 +26,9 @@ class AppSettings {
     motivationalQuotes = prefs.getBool('motivational_quotes') ?? true;
     resetHour = prefs.getInt('reset_time_hour') ?? 0;
     resetMinute = prefs.getInt('reset_time_minute') ?? 0;
+    avatarUrl = prefs.getString('avatar_url') ?? '';
+    displayName = prefs.getString('display_name') ?? '';
+    dailyHabitGoal = prefs.getInt('daily_habit_goal') ?? 5;
   }
 
   static Future<void> setDarkMode(bool value) async {
@@ -57,9 +63,30 @@ class AppSettings {
     resetMinute = minute;
   }
 
+  static Future<void> setAvatarUrl(String url) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('avatar_url', url);
+    avatarUrl = url;
+  }
+
+  static Future<void> setDisplayName(String name) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('display_name', name);
+    displayName = name;
+  }
+
+  static Future<void> setDailyHabitGoal(int goal) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('daily_habit_goal', goal);
+    dailyHabitGoal = goal;
+  }
+
   static Future<void> clearAll() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
+    avatarUrl = '';
+    displayName = '';
+    dailyHabitGoal = 5;
   }
 }
 

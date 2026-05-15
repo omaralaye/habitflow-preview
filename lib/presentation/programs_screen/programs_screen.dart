@@ -4,7 +4,11 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../core/app_settings.dart';
 import '../../core/challenge_manager.dart';
 import '../../data/repositories/challenge_repository.dart';
+import '../../data/repositories/habit_repository.dart';
+import '../../data/repositories/progress_repository.dart';
 import '../../data/models/challenge.dart';
+import '../../data/models/challenge_suggestion.dart';
+import '../../services/ai_service.dart';
 
 class ProgramsScreen extends StatefulWidget {
   const ProgramsScreen({super.key});
@@ -16,8 +20,12 @@ class ProgramsScreen extends StatefulWidget {
 class _ProgramsScreenState extends State<ProgramsScreen>
     with SingleTickerProviderStateMixin {
   final ChallengeRepository _challengeRepository = ChallengeRepository();
+  final HabitRepository _habitRepository = HabitRepository();
+  final ProgressRepository _progressRepository = ProgressRepository();
   late TabController _tabController;
   late final List<Challenge> _availableChallenges;
+  List<ChallengeSuggestion> _aiSuggestions = [];
+  bool _isLoadingSuggestions = false;
 
   @override
   void initState() {
@@ -25,6 +33,7 @@ class _ProgramsScreenState extends State<ProgramsScreen>
     _tabController = TabController(length: 2, vsync: this);
     _availableChallenges = _challengeRepository.getAvailableChallenges();
     ChallengeManager.addListener(_onChallengesChanged);
+    _loadAISuggestions();
   }
 
   @override
@@ -36,6 +45,35 @@ class _ProgramsScreenState extends State<ProgramsScreen>
 
   void _onChallengesChanged() {
     if (mounted) setState(() {});
+  }
+
+  Future<void> _loadAISuggestions() async {
+    setState(() => _isLoadingSuggestions = true);
+    final habits = _habitRepository.getTodayHabits();
+    final stats = _progressRepository.getOverallStats();
+    final suggestions = await AIService.suggestChallenges(habits: habits, stats: stats);
+    if (mounted) {
+      setState(() {
+        _aiSuggestions = suggestions;
+        _isLoadingSuggestions = false;
+      });
+    }
+  }
+
+  Map<String, dynamic> _suggestionToMap(ChallengeSuggestion s) {
+    return {
+      'id': s.title.hashCode,
+      'title': s.title,
+      'description': s.description,
+      'icon': s.icon.codePoint,
+      'color': s.colorValue,
+      'duration': s.durationLabel,
+      'difficulty': s.difficulty,
+      'participants': 0,
+      'rating': 0.0,
+      'category': s.category,
+      'dailyTask': s.dailyTask,
+    };
   }
 
   Map<String, dynamic> _challengeToMap(Challenge c) {
@@ -388,174 +426,378 @@ class _ProgramsScreenState extends State<ProgramsScreen>
     final available =
         _availableChallenges.where((c) => !activeIds.contains(c.id)).toList();
 
-    if (available.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.celebration_rounded,
-                  size: 64, color: theme.colorScheme.primary),
-              const SizedBox(height: 16),
-              Text('All challenges joined!',
-                  style: GoogleFonts.dmSans(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: theme.colorScheme.onSurface)),
-              const SizedBox(height: 8),
-              Text('Great job! Check back for new challenges soon.',
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.dmSans(
-                      fontSize: 14,
-                      color: theme.colorScheme.onSurfaceVariant)),
-            ],
-          ),
-        ),
-      );
-    }
-
-    return ListView.builder(
+    return ListView(
       padding: const EdgeInsets.all(16),
-      itemCount: available.length,
-      itemBuilder: (context, index) {
-        final challenge = available[index];
-        final color = challenge.color;
-
-        return GestureDetector(
-          onTap: () => _showChallengeDetail(theme, _challengeToMap(challenge), color),
-          child: Container(
-            margin: const EdgeInsets.only(bottom: 14),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surface,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: theme.colorScheme.outline.withValues(alpha: 0.12),
+      children: [
+        _buildAISection(theme),
+        if (available.isNotEmpty) ...[
+          Padding(
+            padding: const EdgeInsets.only(top: 8, bottom: 12),
+            child: Text('More Challenges',
+                style: GoogleFonts.dmSans(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: theme.colorScheme.onSurface)),
+          ),
+          ...available.map((challenge) => _buildChallengeCard(theme, challenge)),
+        ],
+        if (_aiSuggestions.isEmpty && available.isEmpty && !_isLoadingSuggestions)
+          Padding(
+            padding: const EdgeInsets.only(top: 48),
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.celebration_rounded,
+                      size: 64, color: theme.colorScheme.primary),
+                  const SizedBox(height: 16),
+                  Text('No challenges yet',
+                      style: GoogleFonts.dmSans(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: theme.colorScheme.onSurface)),
+                  const SizedBox(height: 8),
+                  Text('Try generating AI-powered challenges above!',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.dmSans(
+                          fontSize: 14,
+                          color: theme.colorScheme.onSurfaceVariant)),
+                ],
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: theme.colorScheme.shadow.withValues(alpha: 0.04),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
+            ),
+          ),
+        const SizedBox(height: 32),
+      ],
+    );
+  }
+
+  Widget _buildAISection(ThemeData theme) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text('AI Suggested Challenges',
+                style: GoogleFonts.dmSans(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: theme.colorScheme.onSurface)),
+            const Spacer(),
+            TextButton.icon(
+              onPressed: _isLoadingSuggestions ? null : _loadAISuggestions,
+              icon: Icon(Icons.refresh_rounded, size: 16),
+              label: Text('Refresh',
+                  style: GoogleFonts.dmSans(fontSize: 12)),
+            ),
+          ],
+        ),
+        if (_isLoadingSuggestions)
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 32),
+            alignment: Alignment.center,
+            child: Column(
+              children: [
+                CircularProgressIndicator(strokeWidth: 2),
+                const SizedBox(height: 12),
+                Text('Generating personalized challenges...',
+                    style: GoogleFonts.dmSans(
+                        fontSize: 13,
+                        color: theme.colorScheme.onSurfaceVariant)),
               ],
             ),
+          )
+        else if (_aiSuggestions.isEmpty)
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 24),
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                  color: theme.colorScheme.outline.withValues(alpha: 0.1)),
+            ),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
+                Icon(Icons.auto_awesome_rounded,
+                    size: 32, color: theme.colorScheme.onSurfaceVariant),
+                const SizedBox(height: 8),
+                Text('Tap refresh to get AI challenge suggestions',
+                    style: GoogleFonts.dmSans(
+                        fontSize: 13,
+                        color: theme.colorScheme.onSurfaceVariant)),
+              ],
+            ),
+          )
+        else
+          ..._aiSuggestions.map((s) => _buildAISuggestionCard(theme, s)),
+      ],
+    );
+  }
+
+  Widget _buildAISuggestionCard(ThemeData theme, ChallengeSuggestion s) {
+    final color = Color(s.colorValue);
+    final isJoined = ChallengeManager.activeChallenges
+        .any((c) => c['title'] == s.title);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [color.withValues(alpha: 0.08), color.withValues(alpha: 0.02)],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(s.icon, color: color, size: 24),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      width: 52,
-                      height: 52,
-                      decoration: BoxDecoration(
-                        color: color.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: Icon(
-                        challenge.icon,
-                        color: color,
-                        size: 26,
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            challenge.title,
-                            style: GoogleFonts.dmSans(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700,
-                              color: theme.colorScheme.onSurface,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Row(
-                            children: [
-                              Icon(Icons.people_rounded,
-                                  size: 13,
-                                  color: theme.colorScheme.onSurfaceVariant),
-                              const SizedBox(width: 3),
-                              Text('${challenge.participants} joined',
-                                  style: GoogleFonts.dmSans(
-                                      fontSize: 12,
-                                      color:
-                                          theme.colorScheme.onSurfaceVariant)),
-                              const SizedBox(width: 10),
-                              Icon(Icons.star_rounded,
-                                  size: 13, color: const Color(0xFFFBBF24)),
-                              const SizedBox(width: 3),
-                              Text('${challenge.rating}',
-                                  style: GoogleFonts.dmSans(
-                                      fontSize: 12,
-                                      color:
-                                          theme.colorScheme.onSurfaceVariant)),
-                            ],
-                          ),
-                        ],
-                      ),
+                    Text(s.title,
+                        style: GoogleFonts.dmSans(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: theme.colorScheme.onSurface)),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        _buildMiniTag(theme, s.durationLabel, Icons.schedule_rounded),
+                        const SizedBox(width: 6),
+                        _buildMiniTag(theme, s.difficulty, Icons.bar_chart_rounded),
+                        const SizedBox(width: 6),
+                        _buildMiniTag(theme, s.category, Icons.label_rounded),
+                      ],
                     ),
                   ],
                 ),
-                const SizedBox(height: 10),
-                Text(
-                  challenge.description,
-                  style: GoogleFonts.dmSans(
-                    fontSize: 13,
-                    color: theme.colorScheme.onSurfaceVariant,
-                    height: 1.4,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(s.description,
+              style: GoogleFonts.dmSans(
+                  fontSize: 13,
+                  color: theme.colorScheme.onSurfaceVariant,
+                  height: 1.4),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(6),
                 ),
-                const SizedBox(height: 12),
-                Row(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    _buildTag(theme, challenge.duration,
-                        Icons.calendar_today_rounded),
-                    const SizedBox(width: 8),
-                    _buildTag(theme, challenge.difficulty,
-                        Icons.bar_chart_rounded),
-                    const SizedBox(width: 8),
-                    _buildTag(theme, challenge.category,
-                        Icons.label_rounded),
-                    const Spacer(),
-                    ElevatedButton(
-                      onPressed: () {
+                    Icon(Icons.auto_awesome_rounded,
+                        size: 11, color: color),
+                    const SizedBox(width: 4),
+                    Text('AI Generated',
+                        style: GoogleFonts.dmSans(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: color)),
+                  ],
+                ),
+              ),
+              const Spacer(),
+              ElevatedButton.icon(
+                onPressed: isJoined
+                    ? null
+                    : () {
                         HapticUtil.lightImpact();
-                        ChallengeManager.joinChallenge(_challengeToMap(challenge));
+                        ChallengeManager.joinChallenge(_suggestionToMap(s));
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text(
-                                'Joined ${challenge.title}! 🎉'),
+                            content: Text('Joined ${s.title}! 🎉'),
                             behavior: SnackBarBehavior.floating,
                             shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12)),
                           ),
                         );
                       },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: color,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 20, vertical: 10),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10)),
-                      ),
-                      child: Text('Join',
+                icon: Icon(isJoined ? Icons.check_rounded : Icons.add_rounded,
+                    size: 16),
+                label: Text(isJoined ? 'Joined' : 'Join',
+                    style: GoogleFonts.dmSans(
+                        fontWeight: FontWeight.w600, fontSize: 13)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: color,
+                  foregroundColor: Colors.white,
+                  disabledBackgroundColor: color.withValues(alpha: 0.3),
+                  disabledForegroundColor: Colors.white70,
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 8),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMiniTag(ThemeData theme, String label, IconData icon) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 10, color: theme.colorScheme.onSurfaceVariant),
+          const SizedBox(width: 2),
+          Text(label,
+              style: GoogleFonts.dmSans(
+                  fontSize: 10, color: theme.colorScheme.onSurfaceVariant)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildChallengeCard(ThemeData theme, Challenge challenge) {
+    final color = challenge.color;
+    return GestureDetector(
+      onTap: () => _showChallengeDetail(theme, _challengeToMap(challenge), color),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 14),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: theme.colorScheme.outline.withValues(alpha: 0.12),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: theme.colorScheme.shadow.withValues(alpha: 0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(challenge.icon, color: color, size: 26),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(challenge.title,
                           style: GoogleFonts.dmSans(
-                              fontWeight: FontWeight.w600, fontSize: 13)),
-                    ),
-                  ],
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: theme.colorScheme.onSurface)),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(Icons.people_rounded, size: 13,
+                              color: theme.colorScheme.onSurfaceVariant),
+                          const SizedBox(width: 3),
+                          Text('${challenge.participants} joined',
+                              style: GoogleFonts.dmSans(
+                                  fontSize: 12,
+                                  color: theme.colorScheme.onSurfaceVariant)),
+                          const SizedBox(width: 10),
+                          Icon(Icons.star_rounded, size: 13,
+                              color: const Color(0xFFFBBF24)),
+                          const SizedBox(width: 3),
+                          Text('${challenge.rating}',
+                              style: GoogleFonts.dmSans(
+                                  fontSize: 12,
+                                  color: theme.colorScheme.onSurfaceVariant)),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
-          ),
-        );
-      },
+            const SizedBox(height: 10),
+            Text(challenge.description,
+                style: GoogleFonts.dmSans(
+                    fontSize: 13,
+                    color: theme.colorScheme.onSurfaceVariant,
+                    height: 1.4),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                _buildTag(theme, challenge.duration, Icons.calendar_today_rounded),
+                const SizedBox(width: 8),
+                _buildTag(theme, challenge.difficulty, Icons.bar_chart_rounded),
+                const SizedBox(width: 8),
+                _buildTag(theme, challenge.category, Icons.label_rounded),
+                const Spacer(),
+                ElevatedButton(
+                  onPressed: () {
+                    HapticUtil.lightImpact();
+                    ChallengeManager.joinChallenge(_challengeToMap(challenge));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Joined ${challenge.title}! 🎉'),
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                      ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: color,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 10),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10)),
+                  ),
+                  child: Text('Join',
+                      style: GoogleFonts.dmSans(
+                          fontWeight: FontWeight.w600, fontSize: 13)),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 

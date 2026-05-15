@@ -40,7 +40,7 @@ class _HomeTodayScreenState extends State<HomeTodayScreen> {
     _habitRepository.syncStreaks(_progressRepository);
     _todayHabits = _habitRepository.getTodayHabits();
     _weeklyData = _progressRepository.getWeeklyData();
-    _userName = _userRepository.getUserProfile()?.name.split(' ').first ?? 'there';
+    _userName = _getDisplayName();
     _currentStreak = _progressRepository.getOverallStats()?.currentStreak ?? 0;
     _loadAIInsight();
   }
@@ -55,6 +55,19 @@ class _HomeTodayScreenState extends State<HomeTodayScreen> {
     } catch (_) {
       if (mounted) setState(() => _isLoadingInsight = false);
     }
+  }
+
+  String _getDisplayName() {
+    if (AppSettings.displayName.trim().isNotEmpty) {
+      final name = AppSettings.displayName.trim().split(' ');
+      return name.first;
+    }
+    final user = AuthService().getCurrentUser();
+    if (user != null && user.email != null && user.email!.isNotEmpty) {
+      final parts = user.email!.split('@');
+      return parts.isNotEmpty ? parts.first : 'there';
+    }
+    return 'there';
   }
 
   @override

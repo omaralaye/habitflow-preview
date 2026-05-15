@@ -40,6 +40,7 @@ class Habit {
   Map<String, dynamic> toJson() => {
         'id': id,
         'title': title,
+        'description': description,
         'icon': icon.codePoint,
         'color': colorValue,
         'category': category,

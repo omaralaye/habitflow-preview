@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../core/app_export.dart';
 
 class AICoachScreen extends StatefulWidget {
@@ -45,11 +44,21 @@ class _AICoachScreenState extends State<AICoachScreen> {
       );
 
       if (!mounted) return;
+
+      final habitAction = AIService.extractCreateHabitAction(response);
+      final cleanContent = AIService.stripActionBlocks(response);
+
       setState(() {
-        _messages.add(_ChatMessage(role: 'assistant', content: response));
+        if (cleanContent.isNotEmpty) {
+          _messages.add(_ChatMessage(role: 'assistant', content: cleanContent));
+        }
         _isLoading = false;
       });
       _scrollToBottom();
+
+      if (habitAction != null && mounted) {
+        _showCreateHabitDialog(habitAction);
+      }
     } catch (e) {
       if (!mounted) return;
       debugPrint('AI coach error: $e');
@@ -62,6 +71,148 @@ class _AICoachScreenState extends State<AICoachScreen> {
       });
       _scrollToBottom();
     }
+  }
+
+  Future<void> _showCreateHabitDialog(Map<String, String> habitData) async {
+    final theme = Theme.of(context);
+    final name = habitData['name'] ?? '';
+    final category = habitData['category'] ?? 'Other';
+    final frequency = habitData['frequency'] ?? 'Daily';
+    final categoryIcon = _categoryIcon(category);
+    final categoryColor = _categoryColor(category);
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: categoryColor.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(categoryIcon, color: categoryColor, size: 22),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text('Create New Habit?',
+                  style: GoogleFonts.dmSans(
+                      fontSize: 17, fontWeight: FontWeight.w700)),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(name,
+                style: GoogleFonts.dmSans(
+                    fontSize: 15, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                _dialogChip(theme, category, categoryIcon, categoryColor),
+                const SizedBox(width: 8),
+                _dialogChip(theme, frequency, Icons.schedule_rounded,
+                    theme.colorScheme.primary),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text('This habit will be added to your daily routine.',
+                style: GoogleFonts.dmSans(
+                    fontSize: 13,
+                    color: theme.colorScheme.onSurfaceVariant)),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('Cancel',
+                style: GoogleFonts.dmSans(fontWeight: FontWeight.w600)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: categoryColor,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            ),
+            child: Text('Create Habit',
+                style: GoogleFonts.dmSans(fontWeight: FontWeight.w600)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      await HabitRepository().addHabit(habitData);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.check_circle_rounded, color: Colors.green.shade300, size: 20),
+              const SizedBox(width: 10),
+              Text('Created "$name"!',
+                  style: GoogleFonts.dmSans(fontWeight: FontWeight.w500)),
+            ],
+          ),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
+  }
+
+  IconData _categoryIcon(String category) {
+    switch (category.toLowerCase()) {
+      case 'health': return Icons.favorite_rounded;
+      case 'fitness': return Icons.fitness_center_rounded;
+      case 'mindfulness': return Icons.self_improvement_rounded;
+      case 'learning': return Icons.menu_book_rounded;
+      case 'productivity': return Icons.trending_up_rounded;
+      case 'social': return Icons.people_rounded;
+      case 'finance': return Icons.account_balance_wallet_rounded;
+      default: return Icons.star_rounded;
+    }
+  }
+
+  Color _categoryColor(String category) {
+    switch (category.toLowerCase()) {
+      case 'health': return const Color(0xFFEF4444);
+      case 'fitness': return const Color(0xFF10B981);
+      case 'mindfulness': return const Color(0xFF8B5CF6);
+      case 'learning': return const Color(0xFF3B82F6);
+      case 'productivity': return const Color(0xFFF59E0B);
+      case 'social': return const Color(0xFFEC4899);
+      case 'finance': return const Color(0xFF059669);
+      default: return const Color(0xFF6B7280);
+    }
+  }
+
+  Widget _dialogChip(ThemeData theme, String label, IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 4),
+          Text(label,
+              style: GoogleFonts.dmSans(
+                  fontSize: 12, fontWeight: FontWeight.w600, color: color)),
+        ],
+      ),
+    );
   }
 
   void _scrollToBottom() {

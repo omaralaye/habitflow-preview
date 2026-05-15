@@ -173,6 +173,7 @@ class HabitRepository {
     final habit = Habit(
       id: 0,
       title: data['name'] as String? ?? 'New Habit',
+      description: data['description'] as String? ?? '',
       icon: _iconForCategory(category),
       colorValue: _colorForCategory(category),
       category: category,
